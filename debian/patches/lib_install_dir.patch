@@ -1,0 +1,62 @@
+Description: Make the library install path configurable
+ The upstream sources unconditionally install to
+ CMAKE_INSTALL_PREFIX/lib/mariadb, whereas we want to install to
+ /usr/lib/$(DEB_HOST_MULTIARCH).  This patch creates a new option
+ LIB_INSTALL_DIR for the installation directory which debian/rules then sets
+ accordingly.
+Author: Daniel Schepler <schepler@debian.org>
+
+Index: mariadb-client-lgpl-2.0.0/CMakeLists.txt
+===================================================================
+--- mariadb-client-lgpl-2.0.0.orig/CMakeLists.txt
++++ mariadb-client-lgpl-2.0.0/CMakeLists.txt
+@@ -27,6 +27,12 @@ ENDIF()
+ 
+ OPTION(WITH_SQLITE "Enables Sqlite support" OFF)
+ OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
++
++SET(LIB_INSTALL_DIR "lib/mariadb" CACHE
++    "Directory relative to CMAKE_INSTALL_PREFIX in which to install libraries"
++    STRING)
++MARK_AS_ADVANCED(LIB_INSTALL_DIR)
++
+ ###############
+ 
+ IF(WITH_RTC)
+Index: mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
+===================================================================
+--- mariadb-client-lgpl-2.0.0.orig/libmariadb/CMakeLists.txt
++++ mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
+@@ -210,15 +210,15 @@ ENDIF()
+ 
+ INSTALL(TARGETS
+           libmariadb mariadbclient
+-          RUNTIME DESTINATION "lib/mariadb"
+-          LIBRARY DESTINATION "lib/mariadb"
+-          ARCHIVE DESTINATION "lib/mariadb")
++          RUNTIME DESTINATION "${LIB_INSTALL_DIR}"
++          LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
++          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}")
+ IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+   INSTALL(FILES "${CMAKE_BINARY_DIR}/libmariadb/libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
+-                DESTINATION lib/mariadb)
++                DESTINATION "${LIB_INSTALL_DIR}")
+ ENDIF()
+ 
+ INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+Index: mariadb-client-lgpl-2.0.0/mariadb_config/mariadb_config.c.in
+===================================================================
+--- mariadb-client-lgpl-2.0.0.orig/mariadb_config/mariadb_config.c.in
++++ mariadb-client-lgpl-2.0.0/mariadb_config/mariadb_config.c.in
+@@ -4,7 +4,7 @@
+ #include <stdio.h>
+ 
+ #define INCLUDE "-I@CMAKE_INSTALL_PREFIX@/include/mariadb"
+-#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/lib/mariadb -lmariadb" \
++#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@ -lmariadb" \
+                 "@extra_dynamic_LDFLAGS@"
+ #define CFLAGS  INCLUDE "@CMAKE_C_FLAGS@"
+ #define VERSION "@MYSQL_CLIENT_VERSION@"

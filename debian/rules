@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/architecture.mk
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_clean:
+	dh_auto_clean -O--buildsystem=cmake
+	rm -f include/my_config.h include/mysql_version.h
+
+override_dh_auto_configure:
+	dh_auto_configure -O--buildsystem=cmake -- \
+	-DLIB_INSTALL_DIR:STRING=lib/$(DEB_HOST_MULTIARCH) \
+	-DWITH_EXTERNAL_ZLIB:BOOL=ON

@@ -1,0 +1,5 @@
+mariadb-client-lgpl (2.0.0-1) unstable; urgency=low
+
+  * Initial release.  Closes: #752189.
+
+ -- Daniel Schepler <schepler@debian.org>  Sat, 19 Jul 2014 12:00:19 -0700

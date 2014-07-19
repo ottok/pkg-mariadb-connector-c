@@ -1,0 +1,5 @@
+lib_install_dir.patch
+rename_static_lib.patch
+fix_mariadb_config_cflags.patch
+no_install_buildsystem_files.patch
+debian_no_indirect_dependencies.patch

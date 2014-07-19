@@ -1,0 +1,17 @@
+Description: Avoid installing build system files into /usr/include
+Author: Daniel Schepler <schepler@debian.org>
+
+--- mariadb-client-lgpl-2.0.0.orig/libmariadb/CMakeLists.txt
++++ mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
+@@ -229,7 +229,10 @@ IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+ ENDIF()
+ 
+ INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+-        DESTINATION include/mariadb)
++        DESTINATION include/mariadb
++        PATTERN "*.h.in" EXCLUDE
++        PATTERN "CMakeLists.txt" EXCLUDE
++        PATTERN "Makefile.am" EXCLUDE)
+ INSTALL(FILES 
+    ${CMAKE_BINARY_DIR}/include/my_config.h
+    ${CMAKE_BINARY_DIR}/include/mysql_version.h

@@ -1,0 +1,43 @@
+.TH MARIADB_CONFIG "1" "June 2014" "mariadb_config 5.5.0" "User Commands"
+.SH NAME
+mariadb_config \- get compiler flags for using the MariaDB client library
+.SH SYNOPSIS
+.B mariadb_config
+[\fI\-\-cflags\fR |
+\fI\-\-include\fR |
+\fI\-\-libs\fR |
+\fI\-\-libs_r\fR |
+\fI\-\-version\fR |
+\fI\-\-socket\fR |
+\fI\-\-port\fR]
+.SH OPTIONS
+.TP
+\fB\-\-cflags\fR
+Prints the C compiler flags used to compile the library.  In most cases you
+should use \-\-include instead.
+.TP
+\fB\-\-include\fR
+Prints the C compiler flags needed to compile sources using the library.
+.TP
+\fB\-\-libs\fR
+Prints the linker flags needed to link with the library.
+.TP
+\fB\-\-libs_r\fR
+Present only for backwards compatibility.
+.TP
+\fB\-\-version\fR
+Prints the version of the library.
+.TP
+\fB\-\-socket\fR
+Prints the default socket name for connections.
+.TP
+\fB\-\-port\fR
+Prints the default port number for connections.
+.SH COPYRIGHT
+Copyright 2011 Monty Program AB
+.SH AUTHOR
+The MariaDB Client Library for C was written by the MariaDB Foundation.
+
+This manual page was written by Daniel Schepler <schepler@debian.org> for
+the Debian system but may be used by other projects under the terms of the
+GNU Library General Public License, version 2 or later.
