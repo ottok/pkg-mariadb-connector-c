@@ -1,3 +1,10 @@
+mariadb-client-lgpl (2.0.0-2) UNRELEASED; urgency=low
+
+  * Add Vcs-* fields to debian/control now that packaging is maintained in
+    Alioth git.
+
+ --
+
 mariadb-client-lgpl (2.0.0-1) unstable; urgency=low
 
   * Initial release.  Closes: #752189.

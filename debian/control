@@ -6,6 +6,8 @@ Build-Depends: debhelper (>= 9), cmake (>= 2.8.0), libssl-dev, zlib1g-dev
 Standards-Version: 3.9.5
 Section: libs
 Homepage: https://mariadb.org/
+Vcs-Browser: http://anonscm.debian.org/cgit/pkg-mysql/mariadb-client-lgpl.git/
+Vcs-Git: git://anonscm.debian.org/pkg-mysql/mariadb-client-lgpl.git
 
 Package: libmariadb-client-lgpl-dev
 Section: libdevel
