@@ -1,0 +1,245 @@
+# CMakeLists.txt
+
+
+# This is the LGPL libmariadb project.
+PROJECT(mariadb-client C)
+
+SET(CPACK_PACKAGE_VERSION_MAJOR 2)
+SET(CPACK_PACKAGE_VERSION_MINOR 0)
+SET(CPACK_PACKAGE_VERSION_PATCH 0)
+SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+
+# Minimum required version is Cmake 2.8.x
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
+IF(COMMAND CMAKE_POLICY)
+  CMAKE_POLICY(SET CMP0003 NEW)
+ENDIF()
+
+### Options ###
+IF(NOT WIN32)
+  OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
+  OPTION(WITH_OPENSSL "enables SSL support" ON)
+ELSE()
+  OPTION(WITH_OPENSSL "enables SSL support" OFF)
+  OPTION(WITH_SIGNCODE "digitally sign files" OFF)
+  OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
+ENDIF()
+
+OPTION(WITH_SQLITE "Enables Sqlite support" OFF)
+OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
+###############
+
+IF(WITH_RTC)
+  SET(RTC_OPTIONS "/RTC1 /RTCc")
+ENDIF()
+
+IF(MSVC)
+  # Speedup system tests
+  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/WindowsCache.cmake)
+  IF (MSVC)
+    SET(CONFIG_TYPES "DEBUG" "RELEASE" "RELWITHDEBINFO")
+    FOREACH(BUILD_TYPE ${CONFIG_TYPES})
+      FOREACH(COMPILER CXX C)
+        SET(COMPILER_FLAGS "${CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}}")
+        IF (NOT COMPILER_FLAGS STREQUAL "")
+          STRING(REPLACE "/MD" "/MT" COMPILER_FLAGS ${COMPILER_FLAGS})
+          IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+            SET(COMPILER_FLAGS "${COMPILER_FLAGS} ${RTC_OPTIONS}")
+            STRING(REPLACE "/Zi" "/ZI" COMPILER_FLAGS ${COMPILER_FLAGS})
+          ENDIF()
+          MESSAGE (STATUS "CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}= ${COMPILER_FLAGS}") 
+          SET(CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE} ${COMPILER_FLAGS} CACHE 
+               STRING "overwritten by libmariadb" FORCE)
+        ENDIF()
+      ENDFOREACH()
+    ENDFOREACH()
+  ENDIF()
+ENDIF()
+
+# Disable dbug information for release builds 
+SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DDBUG_OFF")
+SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDBUG_OFF")
+SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
+
+IF(UNIX)
+  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DSAFE_MUTEX")
+ENDIF()
+
+IF(CMAKE_COMPILER_IS_GNUCC)
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wno-uninitialized")
+ENDIF()
+
+# If the build type isn't specified, set to Relwithdebinfo as default.
+IF(NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE "Relwithdebinfo")
+ENDIF()
+
+# various defines for generating include/mysql_version.h
+
+SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
+SET(MYSQL_CLIENT_VERSION_MAJOR "5")
+SET(MYSQL_CLIENT_VERSION_MINOR "5")
+SET(MYSQL_CLIENT_VERSION_PATCH "0")
+SET(MYSQL_CLIENT_VERSION "${MYSQL_CLIENT_VERSION_MAJOR}.${MYSQL_CLIENT_VERSION_MINOR}.${MYSQL_CLIENT_VERSION_PATCH}")
+MATH(EXPR MYSQL_VERSION_ID "${MYSQL_CLIENT_VERSION_MAJOR} * 10000 +
+                            ${MYSQL_CLIENT_VERSION_MINOR} * 100   +
+                            ${MYSQL_CLIENT_VERSION_PATCH}")
+IF (NOT MYSQL_PORT)
+  SET(MYSQL_PORT 3306)
+ENDIF ()
+IF(NOT MYSQL_UNIX_ADDR)
+  SET(MYSQL_UNIX_ADDR "/tmp/mysql.sock")
+ENDIF()
+
+# todo: we don't character sets in share - all is compiled in
+SET(SHAREDIR "share")
+SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
+SET(PLUGINDIR "${CMAKE_INSTALL_PREFIX}/lib/plugin")
+
+INCLUDE(cmake/SearchLibrary.cmake)
+
+IF(WITH_EXTERNAL_ZLIB)
+  FIND_PACKAGE(ZLIB QUIET)
+  IF(${ZLIB_FOUND})
+    SET(LIBZ "-lz")
+  ENDIF()
+ENDIF()
+
+IF(UNIX)
+  SEARCH_LIBRARY(LIBNSL inet_ntoa "nsl_r;nsl")
+  SEARCH_LIBRARY(LIBBIND bind "bind;socket")
+  SEARCH_LIBRARY(LIBSOCKET setsockopt "socket")
+  SEARCH_LIBRARY(LIBDL dlopen "dl")
+  SEARCH_LIBRARY(LIBM floor m)
+  SET(EXTRA_LIBS "${LIBNSL}" "${LIBBIND}" "${LIBSOCKET}" "${LIBDL}" "${LIBM}" "${LIBZ}")
+  FIND_PACKAGE(Threads)
+  SET(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${LIBNSL} ${LIBBIND}
+                               ${LIBSOCKET} ${LIBDL} ${LIBM} ${CMAKE_THREAD_LIBS_INIT})
+  #remove possible dups from required libraries
+  LIST(LENGTH CMAKE_REQUIRED_LIBRARIES rllength)
+  IF(${rllength} GREATER 0)
+    LIST(REMOVE_DUPLICATES CMAKE_REQUIRED_LIBRARIES)
+  ENDIF()
+ENDIF()
+
+
+IF(CMAKE_HAVE_PTHREAD_H)
+  SET(CMAKE_REQUIRED_INCLUDES pthread.h)
+ENDIF()
+
+IF(WIN32)
+  SET(HAVE_THREADS 1)
+  ADD_DEFINITIONS(-DHAVE_DLOPEN)
+  ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
+  IF(MSVC)
+     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996" )
+  ENDIF()
+ELSEIF()
+  SET(HAVE_THREADS ${CMAKE_USE_PTHREADS})
+ENDIF()
+
+# check for various include files
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
+# check for various functions
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckFunctions.cmake)
+# check for various types
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckTypes.cmake)
+
+# Check for OpenSSL
+IF(WITH_OPENSSL)
+  FIND_PACKAGE(OpenSSL)
+  IF(OPENSSL_FOUND)
+    ADD_DEFINITIONS(-DHAVE_OPENSSL)
+  ENDIF()
+ENDIF()
+
+IF(WITH_SQLITE)
+  ADD_DEFINITIONS(-DHAVE_SQLITE)
+ENDIF()
+
+IF(NOT WIN32)
+  INCLUDE(cmake/FindIconv.cmake)
+ENDIF()
+
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/include/mysql_version.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
+               ${CMAKE_SOURCE_DIR}/include/mysql_version.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/include/my_config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
+               ${CMAKE_SOURCE_DIR}/include/my_config.h)
+
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
+
+ADD_SUBDIRECTORY(include)
+ADD_SUBDIRECTORY(plugins)
+ADD_SUBDIRECTORY(libmariadb)
+IF(NOT WIN32)
+  ADD_SUBDIRECTORY(mariadb_config)
+ENDIF()
+
+IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
+  ADD_SUBDIRECTORY(unittest/mytap)
+  ADD_SUBDIRECTORY(unittest/libmariadb)
+ENDIF()
+
+IF(BUILD_DOCS)
+  ADD_SUBDIRECTORY(docs)
+ENDIF()
+
+
+IF(MSVC)
+ SET(CMAKE_INSTALL_PREFIX "")
+ENDIF()
+
+IF(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  ADD_SUBDIRECTORY(win/packaging)
+ENDIF()
+
+SET(CPACK_PACKAGE_VENDOR "Monty Program AB")
+SET(CPACK_PACKAGE_DESCRIPTION "MariaDB client library. A library for connecting to MariaDB and MySQL servers")
+SET(CPACK_PACKAGE_NAME "mariadb_client")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING.LIB")
+SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+SET(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-src")
+
+SET(CPACK_SOURCE_IGNORE_FILES
+.bzr/
+CMakeCache.txt
+cmake_dist.cmake
+CPackSourceConfig.cmake
+CPackConfig.cmake
+.build/
+html/
+unittest
+/cmake_install.cmake
+/CTestTestfile.cmake
+/CMakeFiles/
+/version_resources/
+/_CPack_Packages/
+.*gz$
+.*zip$
+.*so$
+.*so.*$
+.*dll$
+.*a$
+.*pdb$
+/CMakeFiles/
+/version_resources/
+/_CPack_Packages/
+Makefile$
+include/my_config.h$
+/autom4te.cache/
+errmsg.sys$
+)
+
+IF(WIN32)
+  SET(CPACK_GENERATOR "ZIP")
+  SET(CPACK_SOURCE_GENERATOR "ZIP")
+ELSE()
+  SET(CPACK_GENERATOR "TGZ")
+  SET(CPACK_SOURCE_GENERATOR "TGZ")
+ENDIF()
+INCLUDE(CPack)
