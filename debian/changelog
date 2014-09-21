@@ -2,6 +2,7 @@ mariadb-client-lgpl (2.0.0-2) UNRELEASED; urgency=low
 
   * Add Vcs-* fields to debian/control now that packaging is maintained in
     Alioth git.
+  * Added copyright information for zlib among others (Closes: #759717)
 
  --
 
