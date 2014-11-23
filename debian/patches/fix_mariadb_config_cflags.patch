@@ -3,6 +3,7 @@ Description: Fix mariadb_config --cflags output
  "-I/usr/include/mariadb-g -O2".  This fixes the output to put a space
  between the -I parameter and -g.
 Author: Daniel Schepler <schepler@debian.org>
+Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
 --- mariadb-client-lgpl-2.0.0.orig/mariadb_config/mariadb_config.c.in
 +++ mariadb-client-lgpl-2.0.0/mariadb_config/mariadb_config.c.in

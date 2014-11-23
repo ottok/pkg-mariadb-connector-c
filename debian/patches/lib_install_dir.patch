@@ -5,6 +5,7 @@ Description: Make the library install path configurable
  LIB_INSTALL_DIR for the installation directory which debian/rules then sets
  accordingly.
 Author: Daniel Schepler <schepler@debian.org>
+Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
 Index: mariadb-client-lgpl-2.0.0/CMakeLists.txt
 ===================================================================
