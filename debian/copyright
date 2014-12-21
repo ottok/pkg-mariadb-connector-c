@@ -3,7 +3,6 @@ Source: <https://downloads.mariadb.org/client-native/2.0.0/>
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Contact: https://mariadb.atlassian.net/browse/MDEV
 
-Copyright (C) 2012 Monty Program AB
 License: LGPL (v2 or later)
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public

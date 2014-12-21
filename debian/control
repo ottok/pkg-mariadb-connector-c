@@ -3,7 +3,7 @@ Priority: optional
 Maintainer: Debian MySQL Maintainers <pkg-mysql-maint@lists.alioth.debian.org>
 Uploaders: Daniel Schepler <schepler@debian.org>
 Build-Depends: debhelper (>= 9), cmake (>= 2.8.0), libssl-dev, zlib1g-dev
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Section: libs
 Homepage: https://mariadb.org/
 Vcs-Browser: http://anonscm.debian.org/cgit/pkg-mysql/mariadb-client-lgpl.git/
