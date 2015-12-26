@@ -2,7 +2,6 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             dbug.h
                             errmsg.h
                             getopt.h
-                            global.h
                             hash.h
                             ma_common.h
                             m_ctype.h
@@ -11,7 +10,7 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             ma_secure.h
                             my_alarm.h
                             my_base.h
-                            my_config.h
+                            my_config.h.in
                             my_dir.h
                             my_global.h
                             my_list.h
@@ -32,4 +31,7 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             sha1.h
                             thr_alarm.h
                             violite.h
+                            mysql/client_plugin.h
+                            mysql/plugin_auth_common.h
+                            mysql/plugin_auth.h
                             PARENT_SCOPE)

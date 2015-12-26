@@ -458,6 +458,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
     char t_buffer[MAX_TIME_STR_LEN];
     uint len= 0;
+    memset(t_buffer, 0, MAX_TIME_STR_LEN);
 
     t_buffer[1]= t->neg ? 1 : 0;
     int4store(t_buffer + 2, t->day);
@@ -493,7 +494,9 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
        */ 
     MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
     char t_buffer[MAX_DATETIME_STR_LEN];
-    uint len;
+    uint len= 0;
+
+    memset(t_buffer, 0, MAX_DATETIME_STR_LEN);
 
     int2store(t_buffer + 1, t->year);
     t_buffer[3]= (char) t->month;
@@ -510,8 +513,6 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
       len= 7;
     else if (t->year || t->month || t->day)
       len= 4;
-    else
-      len=0;
     t_buffer[0]= len++;
     memcpy(*p, t_buffer, len);
     (*p)+= len;
@@ -702,7 +703,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
 mem_error:
   SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-  my_free((gptr)start, MYF(MY_ALLOW_ZERO_PTR));
+  my_free(start);
   *request_len= 0;
   DBUG_RETURN(NULL);
 }
@@ -992,8 +993,8 @@ my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
     mysql_stmt_reset(stmt);
   net_stmt_close(stmt, 1);
 
-  my_free((char *)stmt->extension, MYF(MY_ALLOW_ZERO_PTR));
-  my_free((char *)stmt, MYF(MY_WME));
+  my_free(stmt->extension);
+  my_free(stmt);
 
   DBUG_RETURN(0);
 }
@@ -1133,7 +1134,7 @@ MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
       !(stmt->extension= (MADB_STMT_EXTENSION *)my_malloc(sizeof(MADB_STMT_EXTENSION),
                                                          MYF(MY_WME | MY_ZEROFILL))))
   {
-    my_free((gptr)stmt, MYF(MY_ALLOW_ZERO_PTR));
+    my_free(stmt);
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(NULL);
   }
@@ -1490,7 +1491,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   ret= test(simple_command(mysql, MYSQL_COM_STMT_EXECUTE, request, request_len, 1, stmt) || 
       (mysql && mysql->methods->db_read_stmt_result && mysql->methods->db_read_stmt_result(mysql)));
   if (request)
-    my_free(request, MYF(0));
+    my_free(request);
 
   /* if a reconnect occured, our connection handle is invalid */
   if (!stmt->mysql)
@@ -1662,7 +1663,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
     if (flags & MADB_RESET_SERVER)
     {
       /* reset statement on server side */
-      if (stmt->mysql->status == MYSQL_STATUS_READY)
+      if (stmt->mysql && stmt->mysql->status == MYSQL_STATUS_READY)
       {
         unsigned char cmd_buf[STMT_ID_LENGTH];
         int4store(cmd_buf, stmt->stmt_id);
@@ -1697,6 +1698,14 @@ my_bool STDCALL mysql_stmt_reset(MYSQL_STMT *stmt)
   unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
 
   DBUG_ENTER("mysql_stmt_reset");
+
+  if (!mysql)
+  {
+    /* connection could be invalid, e.g. after mysql_stmt_close or failed reconnect
+       attempt (see bug CONC-97) */
+    SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    DBUG_RETURN(1); 
+  }
 
   if (stmt->state >= MYSQL_STMT_USER_FETCHING &&
       stmt->fetch_row_func == stmt_unbuffered_fetch)
@@ -1803,7 +1812,7 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     DBUG_RETURN(1);
   }
 
-  if (stmt->mysql->status== MYSQL_STATUS_READY && (length || !stmt->params[param_number].long_data_used))
+  if (length || !stmt->params[param_number].long_data_used)
   {
     int ret;
     size_t packet_len;
@@ -1813,10 +1822,10 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     memcpy(cmd_buff + STMT_ID_LENGTH + 2, data, length);
     stmt->params[param_number].long_data_used= 1;
     ret= simple_command(stmt->mysql,MYSQL_COM_STMT_SEND_LONG_DATA, (char *)cmd_buff, packet_len, 1, stmt);
-    my_free((gptr)cmd_buff, MYF(MY_WME));
+    my_free(cmd_buff);
     DBUG_RETURN(ret); 
   } 
-  DBUG_RETURN(1);
+  DBUG_RETURN(0);
 }
 
 my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt)
@@ -1879,6 +1888,7 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
 
   if (mysql_next_result(stmt->mysql))
   {
+    stmt->state= MYSQL_STMT_FETCH_DONE;
     SET_CLIENT_STMT_ERROR(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate,
         stmt->mysql->net.last_error);
     DBUG_RETURN(1);

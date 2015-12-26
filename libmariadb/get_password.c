@@ -1,4 +1,5 @@
-/* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
+/************************************************************************************
+   Copyright (C) 2014 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -11,201 +12,164 @@
    Library General Public License for more details.
    
    You should have received a copy of the GNU Library General Public
-   License along with this library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
-   MA 02111-1307, USA */
-
-/*
-** Ask for a password from tty
-** This is an own file to avoid conflicts with curses
-*/
+   License along with this library; if not see <http://www.gnu.org/licenses>
+   or write to the Free Software Foundation, Inc., 
+   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
+*************************************************************************************/
 #include <my_global.h>
 #include <my_sys.h>
 #include "mysql.h"
 #include <m_string.h>
 #include <m_ctype.h>
-#include <dbug.h>
+#include <stdio.h>
+#include <memory.h>
 
-#if defined(HAVE_BROKEN_GETPASS) && !defined(HAVE_GETPASSPHRASE)
-#undef HAVE_GETPASS
-#endif
-
-#ifdef HAVE_GETPASS
-#ifdef HAVE_PWD_H
-#include <pwd.h>
-#endif /* HAVE_PWD_H */
-#else /* ! HAVE_GETPASS */
-#if !defined( _WIN32) && !defined(OS2)
-#include <sys/ioctl.h>
-#ifdef HAVE_TERMIOS_H				/* For tty-password */
-#include	<termios.h>
-#define TERMIO	struct termios
-#else
-#ifdef HAVE_TERMIO_H				/* For tty-password */
-#include	<termio.h>
-#define TERMIO	struct termio
-#else
-#include	<sgtty.h>
-#define TERMIO	struct sgttyb
-#endif
-#endif
-#ifdef alpha_linux_port
-#include <asm/ioctls.h>				/* QQ; Fix this in configure */
-#include <asm/termiobits.h>
-#endif
+#ifndef _WIN32
+#include <termios.h>
 #else
 #include <conio.h>
 #endif /* _WIN32 */
-#endif /* HAVE_GETPASS */
 
-#ifdef HAVE_GETPASSPHRASE			/* For Solaris */
-  #define getpass(A) getpassphrase(A)
-#endif
-
-#if defined( _WIN32) || defined(OS2)
-/* were just going to fake it here and get input from the keyboard */
-
-char *get_tty_password(char *opt_message)
-{
-  char to[80];
-  char *pos=to,*end=to+sizeof(to)-1;
-  int i=0;
-  DBUG_ENTER("get_tty_password");
-  fprintf(stdout,opt_message ? opt_message : "Enter password: ");
-  for (;;)
-  {
-    char tmp;
-    tmp=_getch();
-    if (tmp == '\b' || (int) tmp == 127)
-    {
-      if (pos != to)
-      {
-	_cputs("\b \b");
-	pos--;
-	continue;
-      }
-    }
-    if (tmp == '\n' || tmp == '\r' || tmp == 3)
-      break;
-    if (iscntrl(tmp) || pos == end)
-      continue;
-    _cputs("*");
-    *(pos++) = tmp;
-  }
-  while (pos != to && isspace(pos[-1]) == ' ')
-    pos--;					/* Allow dummy space at end */
-  *pos=0;
-  _cputs("\n");
-  DBUG_RETURN(my_strdup(to,MYF(MY_FAE)));
-}
-
-#else
-
-
-#ifndef HAVE_GETPASS
+/* {{{ static char *get_password() */
 /*
-** Can't use fgets, because readline will get confused
-** length is max number of chars in to, not counting \0
-*  to will not include the eol characters.
-*/
+   read password from device
 
-static void get_password(char *to,uint length,int fd,bool echo)
-{
-  char *pos=to,*end=to+length;
+   SYNOPSIS
+     get_password
+     Hdl/file          file handle
+     buffer            input buffer
+     length            buffer length
 
-  for (;;)
-  {
-    char tmp;
-    if (my_read(fd,&tmp,1,MYF(0)) != 1)
-      break;
-    if (tmp == '\b' || (int) tmp == 127)
-    {
-      if (pos != to)
-      {
-	if (echo)
-	{
-	  fputs("\b \b",stdout);
-	  fflush(stdout);
-	}
-	pos--;
-	continue;
-      }
-    }
-    if (tmp == '\n' || tmp == '\r' || tmp == 3)
-      break;
-    if (iscntrl(tmp) || pos == end)
-      continue;
-    if (echo)
-    {
-      fputc('*',stdout);
-      fflush(stdout);
-    }
-    *(pos++) = tmp;
-  }
-  while (pos != to && isspace(pos[-1]) == ' ')
-    pos--;					/* Allow dummy space at end */
-  *pos=0;
-  return;
-}
-#endif /* ! HAVE_GETPASS */
-
-
-char *get_tty_password(char *opt_message)
-{
-#ifdef HAVE_GETPASS
-  char *passbuff;
-#else /* ! HAVE_GETPASS */
-  TERMIO org,tmp;
-#endif /* HAVE_GETPASS */
-  char buff[80];
-
-  DBUG_ENTER("get_tty_password");
-
-#ifdef HAVE_GETPASS
-  passbuff = getpass(opt_message ? opt_message : "Enter password: ");
-
-  /* copy the password to buff and clear original (static) buffer */
-  strnmov(buff, passbuff, sizeof(buff) - 1);
-#ifdef _PASSWORD_LEN
-  memset(passbuff, 0, _PASSWORD_LEN);
-#endif
-#else 
-  if (isatty(fileno(stdout)))
-  {
-    fputs(opt_message ? opt_message : "Enter password: ",stdout);
-    fflush(stdout);
-  }
-#if defined(HAVE_TERMIOS_H)
-  tcgetattr(fileno(stdin), &org);
-  tmp = org;
-  tmp.c_lflag &= ~(ECHO | ISIG | ICANON);
-  tmp.c_cc[VMIN] = 1;
-  tmp.c_cc[VTIME] = 0;
-  tcsetattr(fileno(stdin), TCSADRAIN, &tmp);
-  get_password(buff, sizeof(buff)-1, fileno(stdin), isatty(fileno(stdout)));
-  tcsetattr(fileno(stdin), TCSADRAIN, &org);
-#elif defined(HAVE_TERMIO_H)
-  ioctl(fileno(stdin), (int) TCGETA, &org);
-  tmp=org;
-  tmp.c_lflag &= ~(ECHO | ISIG | ICANON);
-  tmp.c_cc[VMIN] = 1;
-  tmp.c_cc[VTIME]= 0;
-  ioctl(fileno(stdin),(int) TCSETA, &tmp);
-  get_password(buff,sizeof(buff)-1,fileno(stdin),isatty(fileno(stdout)));
-  ioctl(fileno(stdin),(int) TCSETA, &org);
+   RETURN
+     buffer            zero terminated input buffer
+*/   
+#ifdef _WIN32
+static char *get_password(HANDLE Hdl, char *buffer, DWORD length)
 #else
-  gtty(fileno(stdin), &org);
-  tmp=org;
-  tmp.sg_flags &= ~ECHO;
-  tmp.sg_flags |= RAW;
-  stty(fileno(stdin), &tmp);
-  get_password(buff,sizeof(buff)-1,fileno(stdin),isatty(fileno(stdout)));
-  stty(fileno(stdin), &org);
+static char *get_password(FILE *file, char *buffer, int length)
 #endif
-  if (isatty(fileno(stdout)))
-    fputc('\n',stdout);
-#endif /* HAVE_GETPASS */
+{
+  char inChar;
+  int  CharsProcessed= 1;
+#ifdef _WIN32
+  DWORD Offset= 0;
+#else
+  int  Offset= 0;
+#endif
 
-  DBUG_RETURN(my_strdup(buff,MYF(MY_FAE)));
+  memset(buffer, 0, length);
+
+  do
+  {
+#ifdef _WIN32
+    if (!ReadConsole(Hdl, &inChar, 1, &CharsProcessed, NULL) ||
+        !CharsProcessed)
+      break;
+#else
+    inChar= fgetc(file);
+#endif
+
+    switch(inChar) {
+    case '\b': /* backslash */
+      if (Offset)
+      {
+        /* cursor is always at the end */
+        Offset--;
+        buffer[Offset]= 0;
+#ifdef _WIN32
+        _cputs("\b \b");
+#endif
+      }
+      break;
+    case '\n':
+    case '\r':
+      break;
+    default:
+      buffer[Offset]= inChar;
+      if (Offset < length - 2)
+        Offset++;
+#ifdef _WIN32
+      _cputs("*");
+#endif
+      break;
+    }  
+  } while (CharsProcessed && inChar != '\n' && inChar != '\r');
+  return buffer;
 }
-#endif /*_WIN32*/
+/* }}} */
+
+/* {{{ static char* get_tty_password */
+/*
+   reads password from tty/console
+
+   SYNOPSIS
+     get_tty_password()
+     buffer           input buffer
+     length           length of input buffer
+
+   DESCRIPTION
+     reads a password from console (Windows) or tty without echoing
+     it's characters. Input buffer must be allocated by calling function.
+
+   RETURNS
+     buffer           pointer to input buffer
+*/
+char* get_tty_password(char *prompt, char *buffer, int length)
+{
+#ifdef _WIN32
+  DWORD  SaveState;
+  HANDLE Hdl;
+  int    Offset= 0;
+  DWORD  CharsProcessed=  0;
+
+  if (prompt)
+    fprintf(stderr, "%s", prompt);
+
+  if (!(Hdl= CreateFile("CONIN$", 
+                        GENERIC_READ | GENERIC_WRITE,
+                        FILE_SHARE_READ,
+                        NULL,
+                        OPEN_EXISTING, 0, NULL)))
+  {
+    /* todo: provide a graphical dialog */
+    return buffer;
+  }
+  /* Save ConsoleMode and set ENABLE_PROCESSED_INPUT:
+     CTRL+C is processed by the system and is not placed in the input buffer */
+  GetConsoleMode(Hdl, &SaveState);
+  SetConsoleMode(Hdl, ENABLE_PROCESSED_INPUT);
+
+  buffer= get_password(Hdl, buffer, length);
+  SetConsoleMode(Hdl, SaveState);
+  CloseHandle(Hdl);
+  return buffer;
+#else
+  struct termios term_old, 
+                 term_new;
+  FILE *readfrom;
+
+  if (prompt && isatty(fileno(stderr)))
+    fputs(prompt, stderr);
+
+  if (!(readfrom= fopen("/dev/tty", "r")))
+    readfrom= stdin;
+
+  /* try to disable echo */
+  tcgetattr(fileno(readfrom), &term_old);
+  term_new= term_old;
+  term_new.c_cc[VMIN] = 1;
+  term_new.c_cc[VTIME]= 0;
+  term_new.c_lflag&= ~(ECHO | ISIG | ICANON | ECHONL);
+  tcsetattr(fileno(readfrom), TCSADRAIN, &term_new);
+
+  buffer= get_password(readfrom, buffer, length);
+
+  if (isatty(fileno(readfrom)))
+    tcsetattr(fileno(readfrom), TCSADRAIN, &term_old);
+
+  fclose(readfrom);
+
+  return buffer;
+#endif
+}
+/* }}} */

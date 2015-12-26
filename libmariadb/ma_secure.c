@@ -17,6 +17,7 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
+unsigned int mariadb_deinitialize_ssl= 1;
 #ifdef HAVE_OPENSSL
 
 #include <my_global.h>
@@ -25,6 +26,8 @@
 #include <ma_secure.h>
 #include <errmsg.h>
 #include <violite.h>
+#include <mysql_async.h>
+#include <my_context.h>
 
 static my_bool my_ssl_initialized= FALSE;
 static SSL_CTX *SSL_context= NULL;
@@ -32,9 +35,9 @@ static SSL_CTX *SSL_context= NULL;
 #define MAX_SSL_ERR_LEN 100
 
 extern pthread_mutex_t LOCK_ssl_config;
-static pthread_mutex_t *LOCK_crypto;
+static pthread_mutex_t *LOCK_crypto= NULL;
 
-/* 
+/*
  SSL error handling
 */
 static void my_SSL_error(MYSQL *mysql)
@@ -70,20 +73,58 @@ static void my_SSL_error(MYSQL *mysql)
    Crypto call back functions will be
    set during ssl_initialization
  */
+#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
 static unsigned long my_cb_threadid(void)
 {
-  /* chast pthread_t to unsigned long */
-	return (unsigned long) pthread_self();
+  /* cast pthread_t to unsigned long */
+  return (unsigned long) pthread_self();
+}
+#else
+static void my_cb_threadid(CRYPTO_THREADID *id)
+{
+  CRYPTO_THREADID_set_numeric(id, (unsigned long)pthread_self());
+}
+#endif
+
+static void my_cb_locking(int mode, int n, const char *file, int line)
+{
+  if (mode & CRYPTO_LOCK)
+    pthread_mutex_lock(&LOCK_crypto[n]);
+  else
+    pthread_mutex_unlock(&LOCK_crypto[n]);
 }
 
-static void
-my_cb_locking(int mode, int n, const char *file, int line)
+
+static int ssl_crypto_init()
 {
-	if (mode & CRYPTO_LOCK)
-		pthread_mutex_lock(&LOCK_crypto[n]);
-	else
-		pthread_mutex_unlock(&LOCK_crypto[n]);
+  int i, rc= 1, max= CRYPTO_num_locks();
+
+#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
+  CRYPTO_set_id_callback(my_cb_threadid);
+#else
+  rc= CRYPTO_THREADID_set_callback(my_cb_threadid);
+#endif
+
+  /* if someone else already set callbacks 
+   * there is nothing do */
+  if (!rc)
+    return 0;
+
+  if (LOCK_crypto == NULL)
+  {
+    if (!(LOCK_crypto= 
+          (pthread_mutex_t *)my_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
+      return 1;
+
+    for (i=0; i < max; i++)
+      pthread_mutex_init(&LOCK_crypto[i], NULL);
+  }
+
+  CRYPTO_set_locking_callback(my_cb_locking);
+
+  return 0;
 }
+
 
 /*
   Initializes SSL and allocate global
@@ -103,30 +144,15 @@ int my_ssl_start(MYSQL *mysql)
   DBUG_ENTER("my_ssl_start");
   /* lock mutex to prevent multiple initialization */
   pthread_mutex_lock(&LOCK_ssl_config);
-
   if (!my_ssl_initialized)
   {
-    if (!(LOCK_crypto= 
-          (pthread_mutex_t *)my_malloc(sizeof(pthread_mutex_t) * 
-                                       CRYPTO_num_locks(), MYF(0))))
-    {
-      rc= 1;
+    if (ssl_crypto_init())
       goto end;
-    } else
-    {
-      int i;
+    SSL_library_init();
 
-      for (i=0; i < CRYPTO_num_locks(); i++)
-        pthread_mutex_init(&LOCK_crypto[i], NULL);
-      CRYPTO_set_id_callback(my_cb_threadid);
-			CRYPTO_set_locking_callback(my_cb_locking);
-    }
 #if SSLEAY_VERSION_NUMBER >= 0x00907000L
     OPENSSL_config(NULL);
 #endif
-
-    /* always returns 1, so we can discard return code */
-    SSL_library_init();
     /* load errors */
     SSL_load_error_strings();
     /* digests and ciphers */
@@ -164,26 +190,34 @@ void my_ssl_end()
   if (my_ssl_initialized)
   {
     int i;
-    CRYPTO_set_locking_callback(NULL);
-		CRYPTO_set_id_callback(NULL);
 
-    for (i=0; i < CRYPTO_num_locks(); i++)
-      pthread_mutex_destroy(&LOCK_crypto[i]);
+    if (LOCK_crypto)
+    {
+      CRYPTO_set_locking_callback(NULL);
+      CRYPTO_set_id_callback(NULL);
 
-    my_free((gptr)LOCK_crypto, MYF(0));
+      for (i=0; i < CRYPTO_num_locks(); i++)
+        pthread_mutex_destroy(&LOCK_crypto[i]);
+
+      my_free(LOCK_crypto);
+      LOCK_crypto= NULL;
+    }
+
     if (SSL_context)
     {
       SSL_CTX_free(SSL_context);
       SSL_context= FALSE;
     }
-    ERR_remove_state(0);
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ERR_free_strings();
-    ENGINE_cleanup();
-    CONF_modules_free();
-    CONF_modules_unload(1);
-    sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    if (mariadb_deinitialize_ssl)
+    {
+      ERR_remove_state(0);
+      EVP_cleanup();
+      CRYPTO_cleanup_all_ex_data();
+      ERR_free_strings();
+      CONF_modules_free();
+      CONF_modules_unload(1);
+      sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    }
     my_ssl_initialized= FALSE;
   }
   pthread_mutex_unlock(&LOCK_ssl_config);
@@ -194,45 +228,23 @@ void my_ssl_end()
 /* 
   Set certification stuff.
 */
-static int my_ssl_set_certs(SSL *ssl)
+static int my_ssl_set_certs(MYSQL *mysql)
 {
-  int have_cert= 0;
-  MYSQL *mysql;
-
+  char *certfile= mysql->options.ssl_cert,
+       *keyfile= mysql->options.ssl_key;
+  
   DBUG_ENTER("my_ssl_set_certs");
 
   /* Make sure that ssl was allocated and 
      ssl_system was initialized */
-  DBUG_ASSERT(ssl != NULL);
   DBUG_ASSERT(my_ssl_initialized == TRUE);
-
-  /* get connection for current ssl */
-  mysql= (MYSQL *)SSL_get_app_data(ssl);
 
   /* add cipher */
   if ((mysql->options.ssl_cipher && 
         mysql->options.ssl_cipher[0] != 0) &&
-      SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
+      SSL_CTX_set_cipher_list(SSL_context, mysql->options.ssl_cipher) == 0)
     goto error;
 
-  /* set cert */
-  if (mysql->options.ssl_cert && mysql->options.ssl_cert[0] != 0)  
-  {
-    if (SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) <= 0)
-      goto error; 
-    have_cert= 1;
-  }
-
-  /* set key */
-  if (mysql->options.ssl_key && mysql->options.ssl_key[0])
-  {
-    if (SSL_CTX_use_PrivateKey_file(SSL_context, mysql->options.ssl_key, SSL_FILETYPE_PEM) <= 0)
-      goto error;
-
-    /* verify key */
-    if (have_cert && SSL_CTX_check_private_key(SSL_context) != 1)
-      goto error;
-  }
   /* ca_file and ca_path */
   if (SSL_CTX_load_verify_locations(SSL_context, 
                                     mysql->options.ssl_ca,
@@ -243,6 +255,27 @@ static int my_ssl_set_certs(SSL *ssl)
     if (SSL_CTX_set_default_verify_paths(SSL_context) == 0)
       goto error;
   }
+
+  if (keyfile && !certfile)
+    certfile= keyfile;
+  if (certfile && !keyfile)
+    keyfile= certfile;
+
+  /* set cert */
+  if (certfile  && certfile[0] != 0)  
+    if (SSL_CTX_use_certificate_file(SSL_context, certfile, SSL_FILETYPE_PEM) != 1)
+      goto error; 
+
+  /* set key */
+  if (keyfile && keyfile[0])
+  {
+    if (SSL_CTX_use_PrivateKey_file(SSL_context, keyfile, SSL_FILETYPE_PEM) != 1)
+      goto error;
+  }
+  /* verify key */
+  if (certfile && !SSL_CTX_check_private_key(SSL_context))
+    goto error;
+  
   if (mysql->options.extension &&
       (mysql->options.extension->ssl_crl || mysql->options.extension->ssl_crlpath))
   {
@@ -250,10 +283,9 @@ static int my_ssl_set_certs(SSL *ssl)
 
     if ((certstore= SSL_CTX_get_cert_store(SSL_context)))
     {
-      if (X509_STORE_load_locations(certstore, mysql->options.ssl_ca,
-                                     mysql->options.ssl_capath) == 0 ||
-			    X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK |
-                                         X509_V_FLAG_CRL_CHECK_ALL) == 0)
+      if (X509_STORE_load_locations(certstore, mysql->options.extension->ssl_crl,
+                                    mysql->options.extension->ssl_crlpath) == 0 ||
+          X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL) == 0)
         goto error;
     }
   }
@@ -265,7 +297,33 @@ error:
   DBUG_RETURN(1);
 }
 
-static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
+static unsigned int ma_get_cert_fingerprint(X509 *cert, EVP_MD *digest, 
+                                            unsigned char *fingerprint, unsigned int *fp_length)
+{
+  if (*fp_length < EVP_MD_size(digest))
+    return 0;
+  if (!X509_digest(cert, digest, fingerprint, fp_length))
+    return 0;
+  return *fp_length;
+} 
+
+static my_bool ma_check_fingerprint(char *fp1, unsigned int fp1_len,
+                                    char *fp2, unsigned int fp2_len)
+{
+  /* SHA1 fingerprint (160 bit) / 8 * 2 + 1 */
+  char hexstr[41];
+
+  fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
+#ifdef _WIN32
+  if (_strnicmp(hexstr, fp2, fp1_len) != 0)
+#else
+  if (strncasecmp(hexstr, fp2, fp1_len) != 0)
+#endif
+   return 1;
+  return 0;
+}
+
+int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 {
   X509 *check_cert;
   SSL *ssl;
@@ -291,19 +349,17 @@ static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
       DBUG_RETURN(0);
     depth= X509_STORE_CTX_get_error_depth(ctx);
     if (depth == 0)
-    {
       ok= 1;
-      DBUG_RETURN(1);
-    }
   }
-  else
-    DBUG_RETURN(1);
 
-  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                      ER(CR_SSL_CONNECTION_ERROR), 
-                      X509_verify_cert_error_string(ctx->error));
-  DBUG_RETURN(0);
+/*
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        X509_verify_cert_error_string(ctx->error));
+*/
+  DBUG_RETURN(ok);
 }
+
 
 /*
    allocates a new ssl object
@@ -328,21 +384,26 @@ SSL *my_ssl_init(MYSQL *mysql)
   if (!my_ssl_initialized)
     my_ssl_start(mysql); 
 
+  pthread_mutex_lock(&LOCK_ssl_config);
+  if (my_ssl_set_certs(mysql))
+    goto error;
+
   if (!(ssl= SSL_new(SSL_context)))
     goto error;
 
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
-  if (my_ssl_set_certs(ssl))
-    goto error;
 
   verify= (!mysql->options.ssl_ca && !mysql->options.ssl_capath) ?
            SSL_VERIFY_NONE : SSL_VERIFY_PEER;
-  SSL_set_verify(ssl, verify, my_verify_callback);
-  SSL_set_verify_depth(ssl, 1);
 
+  SSL_CTX_set_verify(SSL_context, verify, my_verify_callback);
+  SSL_CTX_set_verify_depth(SSL_context, 1);
+
+  pthread_mutex_unlock(&LOCK_ssl_config);
   DBUG_RETURN(ssl);
 error:
+  pthread_mutex_unlock(&LOCK_ssl_config);
   if (ssl)
     SSL_free(ssl);
   DBUG_RETURN(NULL);
@@ -364,6 +425,7 @@ int my_ssl_connect(SSL *ssl)
 {
   my_bool blocking;
   MYSQL *mysql;
+  long rc;
 
   DBUG_ENTER("my_ssl_connect");
 
@@ -374,7 +436,7 @@ int my_ssl_connect(SSL *ssl)
 
   /* Set socket to blocking if not already set */
   if (!(blocking= vio_is_blocking(mysql->net.vio)))
-    vio_blocking(mysql->net.vio, TRUE);
+    vio_blocking(mysql->net.vio, TRUE, 0);
 
   SSL_clear(ssl);
   SSL_SESSION_set_timeout(SSL_get_session(ssl),
@@ -386,12 +448,107 @@ int my_ssl_connect(SSL *ssl)
     my_SSL_error(mysql);
     /* restore blocking mode */
     if (!blocking)
-      vio_blocking(mysql->net.vio, FALSE);
+      vio_blocking(mysql->net.vio, FALSE, 0);
+    DBUG_RETURN(1);
+  }
+
+  rc= SSL_get_verify_result(ssl);
+  if (rc != X509_V_OK)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+                 ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
+    /* restore blocking mode */
+    if (!blocking)
+      vio_blocking(mysql->net.vio, FALSE, 0);
+
     DBUG_RETURN(1);
   }
 
   vio_reset(mysql->net.vio, VIO_TYPE_SSL, mysql->net.vio->sd, 0, 0);
   mysql->net.vio->ssl= ssl;
+  DBUG_RETURN(0);
+}
+
+int ma_ssl_verify_fingerprint(SSL *ssl)
+{
+  X509 *cert= SSL_get_peer_certificate(ssl);
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ssl);
+  unsigned char fingerprint[EVP_MAX_MD_SIZE];
+  EVP_MD *digest;
+  unsigned int fp_length;
+
+  DBUG_ENTER("ma_ssl_verify_fingerprint");
+
+  if (!cert)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Unable to get server certificate");
+    DBUG_RETURN(1);
+  }
+
+  digest= (EVP_MD *)EVP_sha1();
+  fp_length= sizeof(fingerprint);
+
+  if (!ma_get_cert_fingerprint(cert, digest, fingerprint, &fp_length))
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Unable to get finger print of server certificate");
+    DBUG_RETURN(1);
+  }
+
+  /* single finger print was specified */
+  if (mysql->options.extension->ssl_fp)
+  {
+    if (ma_check_fingerprint(fingerprint, fp_length, mysql->options.extension->ssl_fp,
+                             strlen(mysql->options.extension->ssl_fp)))
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                          ER(CR_SSL_CONNECTION_ERROR), 
+                          "invalid finger print of server certificate");
+      DBUG_RETURN(1);
+    }
+  }
+
+  /* white list of finger prints was specified */
+  if (mysql->options.extension->ssl_fp_list)
+  {
+    FILE *fp;
+    char buff[255];
+
+    if (!(fp = my_fopen(mysql->options.extension->ssl_fp_list ,O_RDONLY, MYF(0))))
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                          ER(CR_SSL_CONNECTION_ERROR), 
+                          "Can't open finger print list");
+      DBUG_RETURN(1);
+    }
+
+    while (fgets(buff, sizeof(buff)-1, fp))
+    {
+      /* remove trailing new line character */
+      char *pos= strchr(buff, '\r');
+      if (!pos)
+        pos= strchr(buff, '\n');
+      if (pos)
+        *pos= '\0';
+        
+      if (!ma_check_fingerprint(fingerprint, fp_length, buff, strlen(buff)))
+      {
+        /* finger print is valid: close file and exit */
+        my_fclose(fp, MYF(0));
+        DBUG_RETURN(0);
+      }
+    }
+
+    /* No finger print matched - close file and return error */
+    my_fclose(fp, MYF(0));
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                 ER(CR_SSL_CONNECTION_ERROR), 
+                 "invalid finger print of server certificate");
+    DBUG_RETURN(1);
+  }
   DBUG_RETURN(0);
 }
 
@@ -412,7 +569,11 @@ int my_ssl_verify_server_cert(SSL *ssl)
 {
   X509 *cert;
   MYSQL *mysql;
-  char *p1, *p2, buf[256];
+  X509_NAME *x509sn;
+  int cn_pos;
+  X509_NAME_ENTRY *cn_entry;
+  ASN1_STRING *cn_asn1;
+  const char *cn_str;
 
   DBUG_ENTER("my_ssl_verify_server_cert");
 
@@ -434,19 +595,33 @@ int my_ssl_verify_server_cert(SSL *ssl)
     DBUG_RETURN(1);
   }
 
-  X509_NAME_oneline(X509_get_subject_name(cert), buf, 256);
+  x509sn= X509_get_subject_name(cert);
+
+  if ((cn_pos= X509_NAME_get_index_by_NID(x509sn, NID_commonName, -1)) < 0)
+    goto error;
+
+  if (!(cn_entry= X509_NAME_get_entry(x509sn, cn_pos)))
+    goto error;
+
+  if (!(cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry)))
+    goto error;
+
+  cn_str = (char *)ASN1_STRING_data(cn_asn1);
+
+  /* Make sure there is no embedded \0 in the CN */
+  if ((size_t)ASN1_STRING_length(cn_asn1) != strlen(cn_str))
+    goto error;
+
+  if (strcmp(cn_str, mysql->host))
+    goto error;
+
   X509_free(cert);
 
-  /* Extract the server name from buffer:
-     Format: ....CN=/hostname/.... */
-  if ((p1= strstr(buf, "/CN=")))
-  {
-    p1+= 4;
-    if ((p2= strchr(p1, '/')))
-      *p2= 0;
-    if (!strcmp(mysql->host, p1))
-      DBUG_RETURN(0);
-  }
+  DBUG_RETURN(0);
+
+error:
+  X509_free(cert);
+
   my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                       ER(CR_SSL_CONNECTION_ERROR), 
                       "Validation of SSL server certificate failed");
@@ -468,8 +643,11 @@ size_t my_ssl_write(Vio *vio, const uchar* buf, size_t size)
 {
   size_t written;
   DBUG_ENTER("my_ssl_write");
-
-  written= SSL_write((SSL*) vio->ssl, buf, size);
+  if (vio->async_context && vio->async_context->active)
+    written= my_ssl_write_async(vio->async_context, (SSL *)vio->ssl, buf,
+                            size);
+  else
+    written= SSL_write((SSL*) vio->ssl, buf, size);
   DBUG_RETURN(written);
 }
 
@@ -490,7 +668,10 @@ size_t my_ssl_read(Vio *vio, uchar* buf, size_t size)
   size_t read;
   DBUG_ENTER("my_ssl_read");
 
-  read= SSL_read((SSL*) vio->ssl, buf, size);
+  if (vio->async_context && vio->async_context->active)
+    read= my_ssl_read_async(vio->async_context, (SSL *)vio->ssl, buf, size);
+  else
+    read= SSL_read((SSL*) vio->ssl, buf, size);
   DBUG_RETURN(read);
 }
 
@@ -511,7 +692,10 @@ int my_ssl_close(Vio *vio)
   int i, rc;
   DBUG_ENTER("my_ssl_close");
 
-  
+  if (!vio || !vio->ssl)
+    DBUG_RETURN(1);
+
+  SSL_set_quiet_shutdown(vio->ssl, 1); 
   /* 2 x pending + 2 * data = 4 */ 
   for (i=0; i < 4; i++)
     if ((rc= SSL_shutdown(vio->ssl)))
