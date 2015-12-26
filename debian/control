@@ -2,7 +2,7 @@ Source: mariadb-connector-c
 Priority: optional
 Maintainer: Debian MySQL Maintainers <pkg-mysql-maint@lists.alioth.debian.org>
 Uploaders: Daniel Schepler <schepler@debian.org>, Otto Kekäläinen <otto@seravo.fi>
-Build-Depends: debhelper (>= 9), cmake (>= 2.8.0), libssl-dev, zlib1g-dev
+Build-Depends: debhelper (>= 9), cmake (>= 2.8.8), libssl-dev, zlib1g-dev
 Standards-Version: 3.9.6
 Section: libs
 Homepage: https://mariadb.org/
@@ -13,6 +13,7 @@ Package: mariadb-connector-c-dev
 Section: libdevel
 Architecture: any
 Depends: libmariadb2 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Provides: libmariadb-client-lgpl-dev
 Description: MariaDB Client Library for C, development files
  MariaDB is a fast, stable and true multi-user, multi-threaded SQL database
  server. SQL (Structured Query Language) is the most popular database query
@@ -48,8 +49,9 @@ Package: mariadb-connector-c-dev-compat
 Architecture: any
 Section: libdevel
 Priority: extra
-Depends: libmariadb-client-lgpl-dev (= ${binary:Version}), ${misc:Depends}
+Depends: mariadb-connector-c-dev (= ${binary:Version}), ${misc:Depends}
 Conflicts: libmysqlclient-dev
+Provides: libmariadb-client-lgpl-dev-compat
 Description: MariaDB Client Library for C, compatibility symlinks
  MariaDB is a fast, stable and true multi-user, multi-threaded SQL database
  server. SQL (Structured Query Language) is the most popular database query
