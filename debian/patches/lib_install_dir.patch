@@ -7,57 +7,60 @@ Description: Make the library install path configurable
 Author: Daniel Schepler <schepler@debian.org>
 Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
-Index: mariadb-client-lgpl-2.0.0/CMakeLists.txt
+Index: mariadb-client-lgpl/cmake/install.cmake
 ===================================================================
---- mariadb-client-lgpl-2.0.0.orig/CMakeLists.txt
-+++ mariadb-client-lgpl-2.0.0/CMakeLists.txt
-@@ -27,6 +27,12 @@ ENDIF()
- 
- OPTION(WITH_SQLITE "Enables Sqlite support" OFF)
- OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
-+
-+SET(LIB_INSTALL_DIR "lib/mariadb" CACHE
-+    "Directory relative to CMAKE_INSTALL_PREFIX in which to install libraries"
-+    STRING)
-+MARK_AS_ADVANCED(LIB_INSTALL_DIR)
-+
- ###############
- 
- IF(WITH_RTC)
-Index: mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
-===================================================================
---- mariadb-client-lgpl-2.0.0.orig/libmariadb/CMakeLists.txt
-+++ mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
-@@ -210,15 +210,15 @@ ENDIF()
- 
- INSTALL(TARGETS
-           libmariadb mariadbclient
--          RUNTIME DESTINATION "lib/mariadb"
--          LIBRARY DESTINATION "lib/mariadb"
--          ARCHIVE DESTINATION "lib/mariadb")
-+          RUNTIME DESTINATION "${LIB_INSTALL_DIR}"
-+          LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
-+          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}")
- IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
-   INSTALL(FILES "${CMAKE_BINARY_DIR}/libmariadb/libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
--                DESTINATION lib/mariadb)
-+                DESTINATION "${LIB_INSTALL_DIR}")
+--- mariadb-client-lgpl.orig/cmake/install.cmake
++++ mariadb-client-lgpl/cmake/install.cmake
+@@ -24,6 +24,9 @@
+ # - RPM
+ # Built with default prefix=/usr
+ #
++# - DEB
++# Install library to lib/ instead of lib/mariadb/
++#
+ #
+ # The following va+riables are used and can be overwritten
+ # 
+@@ -39,13 +42,13 @@ IF(NOT INSTALL_LAYOUT)
  ENDIF()
  
- INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
-Index: mariadb-client-lgpl-2.0.0/mariadb_config/mariadb_config.c.in
-===================================================================
---- mariadb-client-lgpl-2.0.0.orig/mariadb_config/mariadb_config.c.in
-+++ mariadb-client-lgpl-2.0.0/mariadb_config/mariadb_config.c.in
-@@ -4,7 +4,7 @@
- #include <stdio.h>
+ SET(INSTALL_LAYOUT ${INSTALL_LAYOUT} CACHE
+-  STRING "Installation layout. Currently supported options are DEFAULT (tar.gz and zip) and RPM")
++  STRING "Installation layout. Currently supported options are DEFAULT (tar.gz and zip), RPM and DEB")
  
- #define INCLUDE "-I@CMAKE_INSTALL_PREFIX@/include/mariadb"
--#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/lib/mariadb -lmariadb" \
-+#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@ -lmariadb" \
-                 "@extra_dynamic_LDFLAGS@"
- #define CFLAGS  INCLUDE "@CMAKE_C_FLAGS@"
- #define VERSION "@MYSQL_CLIENT_VERSION@"
+ # On Windows we only provide zip and .msi. Latter one uses a different packager. 
+ IF(UNIX)
+   IF(INSTALL_LAYOUT MATCHES "RPM")
+     SET(libmariadb_prefix "/usr")
+-  ELSEIF(INSTALL_LAYOUT MATCHES "DEFAULT")
++  ELSEIF(INSTALL_LAYOUT MATCHES "DEFAULT|DEB")
+     SET(libmariadb_prefix ${CMAKE_INSTALL_PREFIX})
+   ENDIF()
+ ENDIF()
+@@ -55,7 +58,7 @@ IF(CMAKE_DEFAULT_PREFIX_INITIALIZED_BY_D
+ ENDIF()
+ 
+ # check if the specified installation layout is valid
+-SET(VALID_INSTALL_LAYOUTS "DEFAULT" "RPM")
++SET(VALID_INSTALL_LAYOUTS "DEFAULT" "RPM" "DEB")
+ LIST(FIND VALID_INSTALL_LAYOUTS "${INSTALL_LAYOUT}" layout_no)
+ IF(layout_no EQUAL -1)
+   MESSAGE(FATAL_ERROR "Invalid installation layout. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
+@@ -96,6 +99,17 @@ SET(DOCS_INSTALL_DIR_RPM "docs")
+ SET(PLUGIN_INSTALL_DIR_RPM "lib/plugin")
+ 
+ #
++# DEB layout
++#
++set(SUFFIX_INSTALL_DIR_DEB ${CMAKE_LIBRARY_ARCHITECTURE})
++set(BIN_INSTALL_DIR_DEB "bin")
++set(LIB_INSTALL_DIR_DEB "lib")
++set(PLUGIN_INSTALL_DIRDIR_DEB "lib/plugin")
++set(INCLUDE_INSTALL_DIR_DEB "include")
++set(DOCS_INSTALL_DIR_DEB "doc")
++set(PLUGIN_INSTALL_DIR_DEB "lib/plugin")
++
++#
+ # Overwrite defaults
+ #
+ IF(LIB_INSTALL_DIR)

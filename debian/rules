@@ -5,7 +5,11 @@ include /usr/share/dpkg/architecture.mk
 %:
 	dh $@ --buildsystem=cmake
 
+override_dh_clean:
+	dh_clean -O--buildsystem=cmake \
+	include/my_config.h include/mysql_version.h
+
 override_dh_auto_configure:
 	dh_auto_configure -O--buildsystem=cmake -- \
-	-DLIB_INSTALL_DIR:STRING=lib/$(DEB_HOST_MULTIARCH) \
+	-DINSTALL_LAYOUT:STRING=DEB \
 	-DWITH_EXTERNAL_ZLIB:BOOL=ON

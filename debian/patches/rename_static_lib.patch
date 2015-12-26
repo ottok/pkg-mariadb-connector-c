@@ -9,14 +9,14 @@ Description: Rename static library from libmariadbclient.a to libmariadb.a
 Author: Daniel Schepler <schepler@debian.org>
 Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
-Index: mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
+Index: mariadb-client-lgpl/libmariadb/CMakeLists.txt
 ===================================================================
---- mariadb-client-lgpl-2.0.0.orig/libmariadb/CMakeLists.txt
-+++ mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
-@@ -148,6 +148,13 @@ TARGET_LINK_LIBRARIES(mariadbclient ${CM
- IF(OPENSSL_FOUND)
-   TARGET_LINK_LIBRARIES(mariadbclient ${SSL_LIBRARIES})
- ENDIF()
+--- mariadb-client-lgpl.orig/libmariadb/CMakeLists.txt
++++ mariadb-client-lgpl/libmariadb/CMakeLists.txt
+@@ -404,6 +404,14 @@ SET_TARGET_PROPERTIES(libmariadb PROPERT
+    ${CPACK_PACKAGE_VERSION_MAJOR}
+    SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
+ 
 +IF(WIN32)
 +  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES
 +    OUTPUT_NAME libmariadb_static)
@@ -24,15 +24,18 @@ Index: mariadb-client-lgpl-2.0.0/libmariadb/CMakeLists.txt
 +  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES
 +    OUTPUT_NAME mariadb)
 +ENDIF()
++
+ #
+ # Installation
+ #
+@@ -417,8 +425,8 @@ IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+   SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
+   create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
+   create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
+-  create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
+-  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
++  create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
++  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
+ ENDIF()
  
- ADD_LIBRARY(libmariadb SHARED ${LIBMARIADB_SOURCES})
- TARGET_LINK_LIBRARIES(libmariadb ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} ${MATH_LIBRARY} ${ICONV_LIBRARIES})
-@@ -194,7 +201,7 @@ IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
-                      COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                      COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                      COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
--                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadbclient${CMAKE_STATIC_LIBRARY_SUFFIX} libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
-+                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_STATIC_LIBRARY_SUFFIX} libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
-                     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libmariadb
-                     DEPENDS libmariadb mariadbclient)
  
