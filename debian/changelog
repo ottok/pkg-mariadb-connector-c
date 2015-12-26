@@ -1,3 +1,11 @@
+mariadb-connector-c (2.2.2-1) unstable; urgency=medium
+
+  * Rename source package to reflect upstream renaming to
+    MariaDB Connector/C.
+  * Refresh patches.
+
+ -- Daniel Schepler <schepler@debian.org>  Sat, 26 Dec 2015 09:33:33 -0500
+
 mariadb-client-lgpl (2.0.0-2) UNRELEASED; urgency=low
 
   * Add Vcs-* fields to debian/control now that packaging is maintained in
