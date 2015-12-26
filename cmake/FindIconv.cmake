@@ -8,6 +8,7 @@ endif (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
 IF(APPLE)
   find_path(ICONV_INCLUDE_DIR iconv.h PATHS
             /opt/local/include/
+            /usr/include/
             NO_CMAKE_SYSTEM_PATH)
 ELSE()
   find_path(ICONV_INCLUDE_DIR iconv.h)
@@ -16,9 +17,16 @@ ENDIF()
 IF(APPLE)
   find_library(ICONV_LIBRARIES NAMES iconv libiconv c PATHS
                /opt/local/lib/
+               /usr/lib/
                NO_CMAKE_SYSTEM_PATH)
+    SET(ICONV_EXTERNAL TRUE)
 ELSE()
-  find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2 c)
+  find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2)
+  IF(ICONV_LIBRARIES)
+    SET(ICONV_EXTERNAL TRUE)
+  ELSE()
+    find_library(ICONV_LIBRARIES NAMES c)
+  ENDIF()
 ENDIF()
 
 if (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
@@ -26,7 +34,9 @@ if (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
 endif (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
 
 set(CMAKE_REQUIRED_INCLUDES ${ICONV_INCLUDE_DIR})
-set(CMAKE_REQUIRED_LIBRARIES ${ICONV_LIBRARIES})
+IF($ICONV_EXTERNAL)
+  set(CMAKE_REQUIRED_LIBRARIES ${ICONV_LIBRARIES})
+ENDIF()
 
 if (ICONV_FOUND)
   include(CheckCSourceCompiles)
@@ -60,5 +70,6 @@ endif (ICONV_FOUND)
 MARK_AS_ADVANCED(
   ICONV_INCLUDE_DIR
   ICONV_LIBRARIES
+  ICONV_EXTERNAL
   ICONV_SECOND_ARGUMENT_IS_CONST
 )

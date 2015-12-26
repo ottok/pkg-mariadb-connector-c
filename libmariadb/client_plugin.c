@@ -47,6 +47,10 @@
 #include "errmsg.h"
 #include <mysql/client_plugin.h>
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
+
 struct st_client_plugin_int {
   struct st_client_plugin_int *next;
   void   *dlhandle;
@@ -229,7 +233,7 @@ static void load_env_plugins(MYSQL *mysql)
     plugs= s + 1;
   } while (s);
 
-  my_free(free_env, MYF(0));
+  my_free(free_env);
 }
 
 /********** extern functions to be used by libmariadb *********************/
@@ -306,7 +310,7 @@ void mysql_client_plugin_deinit()
 /************* public facing functions, for client consumption *********/
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_client_register_plugin(MYSQL *mysql,
                              struct st_mysql_client_plugin *plugin)
 {
@@ -335,7 +339,7 @@ mysql_client_register_plugin(MYSQL *mysql,
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
                     int argc, va_list args)
 {
@@ -346,6 +350,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   char dlpath[FN_REFLEN+1];
   void *sym, *dlhandle;
   struct st_mysql_client_plugin *plugin;
+  char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
 
   if (is_not_initialized(mysql, name))
     return NULL;
@@ -362,7 +367,8 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   /* Compile dll path */
   strxnmov(dlpath, sizeof(dlpath) - 1,
            mysql->options.extension && mysql->options.extension->plugin_dir ?
-           mysql->options.extension->plugin_dir : PLUGINDIR, "/",
+           mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
+           PLUGINDIR, "/",
            name, SO_EXT, NullS);
    
   /* Open new dll handle */
@@ -423,7 +429,7 @@ err:
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin(MYSQL *mysql, const char *name, int type, int argc, ...)
 {
   struct st_mysql_client_plugin *p;
@@ -436,7 +442,7 @@ mysql_load_plugin(MYSQL *mysql, const char *name, int type, int argc, ...)
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
 {
   struct st_mysql_client_plugin *p;

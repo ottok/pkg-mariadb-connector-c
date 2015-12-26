@@ -132,7 +132,7 @@ int my_net_init(NET *net, Vio* vio)
     net->fd  = vio_fd(vio);			/* For perl DBI/DBD */
 #if defined(MYSQL_SERVER) && !defined(__WIN32) && !defined(__EMX__) && !defined(OS2)
     if (!(test_flags & TEST_BLOCKING))
-      vio_blocking(vio, FALSE);
+      vio_blocking(vio, FALSE, 0);
 #endif
     vio_fastsend(vio);
   }
@@ -141,7 +141,7 @@ int my_net_init(NET *net, Vio* vio)
 
 void net_end(NET *net)
 {
-  my_free((gptr) net->buff,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(net->buff);
   net->buff=0;
 }
 
@@ -164,7 +164,11 @@ static my_bool net_realloc(NET *net, size_t length)
     DBUG_RETURN(1);
   }
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
-  if (!(buff=(uchar*) my_realloc((char*) net->buff, pkt_length + 1, MYF(MY_WME))))
+  /* reallocate buffer:
+     size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
+  if (!(buff=(uchar*) my_realloc((char*) net->buff, 
+                                 pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE,
+                                 MYF(MY_WME))))
   {
     DBUG_PRINT("info", ("Out of memory"));
     net->error=1;
@@ -441,7 +445,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
         {                                       /* Always true for client */
 	  if (!vio_is_blocking(net->vio))
 	  {
-	    while (vio_blocking(net->vio, TRUE) < 0)
+	    while (vio_blocking(net->vio, TRUE, 0) < 0)
 	    {
 	      if (vio_should_retry(net->vio) && retry_count++ < RETRY_COUNT)
 		continue;
@@ -492,12 +496,12 @@ net_real_write(NET *net,const char *packet,size_t  len)
 #endif
 #ifdef HAVE_COMPRESS
   if (net->compress)
-    my_free((char*) packet,MYF(0));
+    my_free((void *)packet);
 #endif
   if (thr_alarm_in_use(&alarmed))
   {
     thr_end_alarm(&alarmed);
-    vio_blocking(net->vio, net_blocking);
+    vio_blocking(net->vio, net_blocking, 0);
   }
   net->reading_or_writing=0;
   DBUG_RETURN(((int) (pos != end)));
@@ -522,7 +526,7 @@ static void my_net_skip_rest(NET *net, ulong remain, thr_alarm_t *alarmed,
   if (!thr_alarm_in_use(alarmed))
   {
     if (thr_alarm(alarmed,net->timeout,alarm_buff) ||
-	(!vio_is_blocking(net->vio) && vio_blocking(net->vio,TRUE) < 0))
+	(!vio_is_blocking(net->vio) && vio_blocking(net->vio,TRUE, 0) < 0))
       return;					/* Can't setup, abort */
   }
   while (remain > 0)
@@ -592,7 +596,7 @@ my_real_read(NET *net, size_t *complen)
 	    {
               if (!vio_is_blocking(net->vio))
               {
-                while (vio_blocking(net->vio,TRUE) < 0)
+                while (vio_blocking(net->vio,TRUE, 0) < 0)
                 {
                   if (vio_should_retry(net->vio) &&
 		      retry_count++ < RETRY_COUNT)
@@ -702,7 +706,7 @@ end:
   if (thr_alarm_in_use(&alarmed))
   {
     thr_end_alarm(&alarmed);
-    vio_blocking(net->vio, net_blocking);
+    vio_blocking(net->vio, net_blocking, 0);
   }
   net->reading_or_writing=0;
   return(len);
