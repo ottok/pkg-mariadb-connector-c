@@ -46,7 +46,7 @@ Package: libmariadb-dev-compat
 Architecture: any
 Section: libdevel
 Priority: extra
-Depends: mariadb-connector-c-dev (= ${binary:Version}), ${misc:Depends}
+Depends: libmariadb-dev (= ${binary:Version}), ${misc:Depends}
 Conflicts: libmysqlclient-dev, libmariadb-client-lgpl-dev-compat
 Provides: libmariadb-client-lgpl-dev-compat
 Replaces: libmariadb-client-lgpl-dev-compat
