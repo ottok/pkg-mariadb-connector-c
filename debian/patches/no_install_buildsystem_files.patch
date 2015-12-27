@@ -7,7 +7,7 @@ Index: mariadb-client-lgpl/libmariadb/CMakeLists.txt
 --- mariadb-client-lgpl.orig/libmariadb/CMakeLists.txt
 +++ mariadb-client-lgpl/libmariadb/CMakeLists.txt
 @@ -437,7 +437,10 @@ INSTALL(TARGETS
-           ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")
+           ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/${LIBSUFFIX_INSTALL_DIR}")
  
  INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
 -        DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
