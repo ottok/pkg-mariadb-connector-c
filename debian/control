@@ -9,19 +9,21 @@ Homepage: https://mariadb.org/
 Vcs-Browser: http://anonscm.debian.org/cgit/pkg-mysql/mariadb-client-lgpl.git/
 Vcs-Git: git://anonscm.debian.org/pkg-mysql/mariadb-client-lgpl.git
 
-Package: mariadb-connector-c-dev
+Package: libmariadb-dev
 Section: libdevel
 Architecture: any
 Depends: libmariadb2 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Provides: libmariadb-client-lgpl-dev
-Description: MariaDB Client Library for C, development files
+Conflicts: libmariadb-client-lgpl-dev
+Replaces: libmariadb-client-lgpl-dev
+Description: MariaDB Connector/C, development files
  MariaDB is a fast, stable and true multi-user, multi-threaded SQL database
  server. SQL (Structured Query Language) is the most popular database query
  language in the world. The main goals of MariaDB are speed, robustness and
  ease of use.
  .
- This package includes development libraries and header files for the
- MariaDB Client Library for C.
+ This package includes development libraries and header files for
+ MariaDB Connector/C.
  .
  Note that MariaDB also comes with an included version of the client library.
  The main reason to use this package, rather than libmariadbclient-dev, is
@@ -32,31 +34,27 @@ Package: libmariadb2
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Multi-Arch: same
-Description: MariaDB Client Library for C
+Description: MariaDB Connector/C
  MariaDB is a fast, stable and true multi-user, multi-threaded SQL database
  server. SQL (Structured Query Language) is the most popular database query
  language in the world. The main goals of MariaDB are speed, robustness and
  ease of use.
  .
- This package includes the MariaDB Client Library for C.
- .
- Note that MariaDB also comes with an included version of the client library.
- The main reason to use this package, rather than libmariadbclient18, is
- differences in licensing: this package uses the LGPL, while
- libmariadbclient18 uses the GPL.
+ This package includes MariaDB Connector/C.
 
-Package: mariadb-connector-c-dev-compat
+Package: libmariadb-dev-compat
 Architecture: any
 Section: libdevel
 Priority: extra
 Depends: mariadb-connector-c-dev (= ${binary:Version}), ${misc:Depends}
-Conflicts: libmysqlclient-dev
+Conflicts: libmysqlclient-dev, libmariadb-client-lgpl-dev-compat
 Provides: libmariadb-client-lgpl-dev-compat
-Description: MariaDB Client Library for C, compatibility symlinks
+Replaces: libmariadb-client-lgpl-dev-compat
+Description: MariaDB Connector/C, compatibility symlinks
  MariaDB is a fast, stable and true multi-user, multi-threaded SQL database
  server. SQL (Structured Query Language) is the most popular database query
  language in the world. The main goals of MariaDB are speed, robustness and
  ease of use.
  .
  This package includes compatibility symlinks to allow sources expecting the
- MySQL client libraries to be built against the MariaDB Client Library for C.
+ MySQL client libraries to be built against MariaDB Connector/C.
