@@ -7,9 +7,11 @@ mariadb-connector-c (2.2.2-1) unstable; urgency=medium
     + Required major reworking of lib_install_dir.patch to create a
       "DEB" install profile.
     + Drop fix_mariadb_config_cflags.patch as it was merged upstream.
+  * New patch: fix_mariadb_config_plugindir.patch to fix the output
+    of mariadb_config --plugindir.
   * Add Otto Kekäläinen to Uploaders.
 
- -- Daniel Schepler <schepler@debian.org>  Sat, 26 Dec 2015 10:15:49 -0500
+ -- Daniel Schepler <schepler@debian.org>  Sat, 26 Dec 2015 21:02:40 -0500
 
 mariadb-client-lgpl (2.0.0-2) UNRELEASED; urgency=low
 

@@ -1,9 +1,9 @@
 Description: Make the library install path configurable
  The upstream sources unconditionally install to
  CMAKE_INSTALL_PREFIX/lib/mariadb, whereas we want to install to
- /usr/lib/$(DEB_HOST_MULTIARCH).  This patch creates a new option
- LIB_INSTALL_DIR for the installation directory which debian/rules then sets
- accordingly.
+ /usr/lib/$(DEB_HOST_MULTIARCH).  This patch creates a new choice
+ "DEB" for INSTALL_LAYOUT which creates a more appropriate installation
+ layout for Debian packages.
 Author: Daniel Schepler <schepler@debian.org>
 Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
