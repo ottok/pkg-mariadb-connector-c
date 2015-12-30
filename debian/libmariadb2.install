@@ -1,1 +1,2 @@
 usr/lib/*/libmariadb.so.2
+usr/lib/*/mariadb/plugin/*.so

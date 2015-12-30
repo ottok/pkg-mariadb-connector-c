@@ -75,7 +75,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
 +set(PLUGIN_INSTALL_DIRDIR_DEB "lib/${CMAKE_LIBRARY_ARCHITECTURE}/plugin")
 +set(INCLUDE_INSTALL_DIR_DEB "include")
 +set(DOCS_INSTALL_DIR_DEB "docs")
-+set(PLUGIN_INSTALL_DIR_DEB "lib/${CMAKE_LIBRARY_ARCHITECTURE}/plugin")
++set(PLUGIN_INSTALL_DIR_DEB "lib/${CMAKE_LIBRARY_ARCHITECTURE}/mariadb/plugin")
 +
 +#
  # Overwrite defaults
