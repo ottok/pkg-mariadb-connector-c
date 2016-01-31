@@ -1,27 +1,31 @@
 mariadb-connector-c (2.2.2-1) unstable; urgency=medium
 
-  * New upstream release.
+  * New upstream release.  Closes: #785684.
+    + Adds plugins as in MySQL Connector/C, updates mariadb-config
+      accordingly with new --plugindir option.  Closes: #770650.
   * Rename source package to reflect upstream renaming to
     MariaDB Connector/C.
+  * Rename binary dev packages to reflect that this is now the primary
+    MariaDB client library in Debian.
   * Refresh patches.
     + Required major reworking of lib_install_dir.patch to create a
       "DEB" install profile.
     + Drop fix_mariadb_config_cflags.patch as it was merged upstream.
   * New patch: fix_mariadb_config_plugindir.patch to fix the output
     of mariadb_config --plugindir.
+  * Configure default Unix socket path to Debian's default of
+    /var/lib/mysqld/mysqld.sock.  Closes: #781804.
+  * Add symlink /usr/include/mysql -> mariadb in compat package.
   * Add Otto Kekäläinen to Uploaders.
 
- -- Daniel Schepler <schepler@debian.org>  Sat, 26 Dec 2015 21:02:40 -0500
-
-mariadb-client-lgpl (2.0.0-2) UNRELEASED; urgency=low
-
+  [ Changes from unreleased 2.0.0-2 ]
   * Add Vcs-* fields to debian/control now that packaging is maintained in
     Alioth git.
   * Added copyright information for zlib among others (Closes: #759717)
   * Add symlink /usr/bin/mysql_config -> mariadb_config in compat package.
     Closes: #766996.
 
- -- Daniel Schepler <schepler@debian.org>  Mon, 22 Sep 2014 12:00:19 -0700
+ -- Daniel Schepler <schepler@debian.org>  Sun, 31 Jan 2016 10:18:21 -0800
 
 mariadb-client-lgpl (2.0.0-1) unstable; urgency=low
 

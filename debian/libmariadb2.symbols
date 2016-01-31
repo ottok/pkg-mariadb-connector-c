@@ -1,5 +1,4 @@
 libmariadb.so.2 libmariadb2 #MINVER#
- (optional)get_tty_password@Base 2.0.0
  load_defaults@Base 2.0.0
  mariadb_connection@Base 2.0.0
  mariadb_convert_string@Base 2.0.0
