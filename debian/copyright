@@ -3,7 +3,7 @@ Source: <https://downloads.mariadb.org/client-native/2.0.0/>
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Contact: https://mariadb.atlassian.net/browse/MDEV
 
-License: LGPL (v2 or later)
+License: LGPL-2+
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
  License as published by the Free Software Foundation; either
@@ -29,10 +29,7 @@ Copyright:
  2006-2011 The PHP Group
  2012-2013 Monty Program AB
  2013-
-License: LGPL
- On Debian systems the full text of the GNU Library General Public
- License version 2 can be found in the file
- `/usr/share/common-licenses/LGPL-2`
+License: LGPL-2+
 
 
 Files: libmariadb/ma_dyncol.c
@@ -108,21 +105,6 @@ License: GPL-2+
 
 Files: debian/patches/*
 Copyright: 2014-2015 Daniel Schepler <schepler@debian.org>
-License: LGPL (v2 or later)
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
- .
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
- .
- You should have received a copy of the GNU Library General Public
- License along with this library; if not see <http://www.gnu.org/licenses>
- or write to the Free Software Foundation, Inc.,
- 51 Franklin St., Fifth Floor, Boston, MA 02110, USA
- .
- On Debian systems, the complete text of the GNU Library General Public
- License version 2 can be found in "/usr/share/common-licenses/LGPL-2".
+License: LGPL-2+
+
+

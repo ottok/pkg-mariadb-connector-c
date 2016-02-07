@@ -1,5 +1,9 @@
 mariadb-connector-c (2.2.2-1) unstable; urgency=medium
 
+  [ Otto Kekäläinen ]
+  * Fix d/copyright formatting
+
+  [ Daniel Schepler ]
   * New upstream release.  Closes: #785684.
     + Adds plugins as in MySQL Connector/C, updates mariadb-config
       accordingly with new --plugindir option.  Closes: #770650.
