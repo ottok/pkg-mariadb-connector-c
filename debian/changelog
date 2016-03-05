@@ -29,7 +29,7 @@ mariadb-connector-c (2.2.2-1) unstable; urgency=medium
   * Add symlink /usr/bin/mysql_config -> mariadb_config in compat package.
     Closes: #766996.
 
- -- Daniel Schepler <schepler@debian.org>  Sun, 31 Jan 2016 10:18:21 -0800
+ -- Otto Kekäläinen <otto@debian.org>  Sat, 05 Mar 2016 22:36:46 +0200
 
 mariadb-client-lgpl (2.0.0-1) unstable; urgency=low
 
