@@ -1,7 +1,8 @@
-mariadb-connector-c (2.2.2-1) UNRELEASED; urgency=low
+mariadb-connector-c (2.3.0-1) UNRELEASED; urgency=low
 
   [ Otto Kekäläinen ]
   * Fix d/copyright formatting
+  * Import new upstream release 2.3.0
 
   [ Daniel Schepler ]
   * New upstream release.  Closes: #785684.

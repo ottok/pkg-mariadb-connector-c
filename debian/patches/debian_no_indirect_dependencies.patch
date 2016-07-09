@@ -5,10 +5,8 @@ Description: Exclude indirect dependencies from mariadb_config --libs output
 Author: Daniel Schepler <schepler@debian.org>
 Forwarded: not-needed
 
-Index: mariadb-client-lgpl/mariadb_config/mariadb_config.c.in
-===================================================================
---- mariadb-client-lgpl.orig/mariadb_config/mariadb_config.c.in
-+++ mariadb-client-lgpl/mariadb_config/mariadb_config.c.in
+--- a/mariadb_config/mariadb_config.c.in
++++ b/mariadb_config/mariadb_config.c.in
 @@ -4,8 +4,7 @@
  #include <stdio.h>
  

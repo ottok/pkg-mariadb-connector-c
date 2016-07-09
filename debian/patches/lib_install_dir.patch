@@ -7,11 +7,9 @@ Description: Make the library install path configurable
 Author: Daniel Schepler <schepler@debian.org>
 Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
-Index: mariadb-client-lgpl/cmake/install.cmake
-===================================================================
---- mariadb-client-lgpl.orig/cmake/install.cmake
-+++ mariadb-client-lgpl/cmake/install.cmake
-@@ -24,6 +24,9 @@
+--- a/cmake/install.cmake
++++ b/cmake/install.cmake
+@@ -12,6 +12,9 @@
  # - RPM
  # Built with default prefix=/usr
  #
@@ -21,7 +19,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
  #
  # The following va+riables are used and can be overwritten
  # 
-@@ -39,13 +42,13 @@ IF(NOT INSTALL_LAYOUT)
+@@ -27,13 +30,13 @@ IF(NOT INSTALL_LAYOUT)
  ENDIF()
  
  SET(INSTALL_LAYOUT ${INSTALL_LAYOUT} CACHE
@@ -37,7 +35,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
      SET(libmariadb_prefix ${CMAKE_INSTALL_PREFIX})
    ENDIF()
  ENDIF()
-@@ -55,7 +58,7 @@ IF(CMAKE_DEFAULT_PREFIX_INITIALIZED_BY_D
+@@ -43,7 +46,7 @@ IF(CMAKE_DEFAULT_PREFIX_INITIALIZED_BY_D
  ENDIF()
  
  # check if the specified installation layout is valid
@@ -46,7 +44,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
  LIST(FIND VALID_INSTALL_LAYOUTS "${INSTALL_LAYOUT}" layout_no)
  IF(layout_no EQUAL -1)
    MESSAGE(FATAL_ERROR "Invalid installation layout. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
-@@ -72,6 +75,7 @@ ENDIF()
+@@ -60,6 +63,7 @@ ENDIF()
  # DEFAULT layout
  #
  SET(SUFFIX_INSTALL_DIR_DEFAULT "mariadb")
@@ -54,7 +52,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
  SET(BIN_INSTALL_DIR_DEFAULT "bin")
  SET(LIB_INSTALL_DIR_DEFAULT "lib")
  SET(INCLUDE_INSTALL_DIR_DEFAULT "include")
-@@ -82,6 +86,7 @@ SET(PLUGIN_INSTALL_DIR_DEFAULT "lib/plug
+@@ -70,6 +74,7 @@ SET(PLUGIN_INSTALL_DIR_DEFAULT "lib/plug
  # RPM layout
  #
  SET(SUFFIX_INSTALL_DIR_RPM "mariadb")
@@ -62,7 +60,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
  SET(BIN_INSTALL_DIR_RPM "bin")
  IF(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
    SET(LIB_INSTALL_DIR_RPM "lib64")
-@@ -96,6 +101,18 @@ SET(DOCS_INSTALL_DIR_RPM "docs")
+@@ -84,6 +89,18 @@ SET(DOCS_INSTALL_DIR_RPM "docs")
  SET(PLUGIN_INSTALL_DIR_RPM "lib/plugin")
  
  #
@@ -81,7 +79,7 @@ Index: mariadb-client-lgpl/cmake/install.cmake
  # Overwrite defaults
  #
  IF(LIB_INSTALL_DIR)
-@@ -126,7 +143,7 @@ ELSE()
+@@ -114,7 +131,7 @@ ELSE()
    SET(SUFFIX_INSTALL_DIR_${INSTALL_LAYOUT} ${SUFFIX_INSTALL_DIR})
  ENDIF()
  
@@ -90,11 +88,9 @@ Index: mariadb-client-lgpl/cmake/install.cmake
    SET(${dir}_INSTALL_DIR ${${dir}_INSTALL_DIR_${INSTALL_LAYOUT}})
    MARK_AS_ADVANCED(${dir}_INSTALL_DIR)
  ENDFOREACH()
-Index: mariadb-client-lgpl/CMakeLists.txt
-===================================================================
---- mariadb-client-lgpl.orig/CMakeLists.txt
-+++ mariadb-client-lgpl/CMakeLists.txt
-@@ -317,7 +317,7 @@ ELSE()
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -314,7 +314,7 @@ ELSE()
  ENDIF()
  MESSAGE(STATUS "Installation layout: ${INSTALL_LAYOUT}")
  MESSAGE(STATUS "Include files will be installed in ${PREFIX_INSTALL_DIR}/${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")
@@ -103,11 +99,9 @@ Index: mariadb-client-lgpl/CMakeLists.txt
  MESSAGE(STATUS "Binaries will be installed in ${PREFIX_INSTALL_DIR}/${BIN_INSTALL_DIR}")
  
  MESSAGE(STATUS "Required: ${CMAKE_REQUIRED_LIBRARIES}")
-Index: mariadb-client-lgpl/libmariadb/CMakeLists.txt
-===================================================================
---- mariadb-client-lgpl.orig/libmariadb/CMakeLists.txt
-+++ mariadb-client-lgpl/libmariadb/CMakeLists.txt
-@@ -414,7 +414,7 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlin
+--- a/libmariadb/CMakeLists.txt
++++ b/libmariadb/CMakeLists.txt
+@@ -415,7 +415,7 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlin
  # of the config program. To make sure these programs can
  # use mariadb client library we provide libmysql symlinks
  IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
@@ -116,7 +110,7 @@ Index: mariadb-client-lgpl/libmariadb/CMakeLists.txt
    create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
    create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
    create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
-@@ -424,9 +424,9 @@ ENDIF()
+@@ -425,9 +425,9 @@ ENDIF()
  
  INSTALL(TARGETS
            libmariadb mariadbclient
@@ -129,10 +123,8 @@ Index: mariadb-client-lgpl/libmariadb/CMakeLists.txt
  
  INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
          DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
-Index: mariadb-client-lgpl/mariadb_config/mariadb_config.c.in
-===================================================================
---- mariadb-client-lgpl.orig/mariadb_config/mariadb_config.c.in
-+++ mariadb-client-lgpl/mariadb_config/mariadb_config.c.in
+--- a/mariadb_config/mariadb_config.c.in
++++ b/mariadb_config/mariadb_config.c.in
 @@ -4,7 +4,7 @@
  #include <stdio.h>
  

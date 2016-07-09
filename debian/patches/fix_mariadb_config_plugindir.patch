@@ -4,10 +4,8 @@ Description: Fix mariadb_config's plugindir output
 Author: Daniel Schepler <schepler@debian.org>
 Forwarded: no
 
-Index: mariadb-client-lgpl/mariadb_config/mariadb_config.c.in
-===================================================================
---- mariadb-client-lgpl.orig/mariadb_config/mariadb_config.c.in
-+++ mariadb-client-lgpl/mariadb_config/mariadb_config.c.in
+--- a/mariadb_config/mariadb_config.c.in
++++ b/mariadb_config/mariadb_config.c.in
 @@ -7,7 +7,7 @@
  #define LIBS    "-L@PREFIX_INSTALL_DIR@/@LIB_INSTALL_DIR@/@LIBSUFFIX_INSTALL_DIR@ -lmariadb"
  #define CFLAGS  INCLUDE " @CMAKE_C_FLAGS@"
