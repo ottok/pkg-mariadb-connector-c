@@ -39,11 +39,6 @@ static int old_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
 extern uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer);
 
-#define compile_time_assert(A) \
-do {\
-  typedef char constraint[(A) ? 1 : -1];\
-} while (0);
-
 static auth_plugin_t native_password_client_plugin=
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
@@ -126,7 +121,7 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       return CR_SERVER_HANDSHAKE_ERR;
 
     /* save it in MYSQL */
-    memcpy(mysql->scramble_buff, pkt, SCRAMBLE_LENGTH);
+    memmove(mysql->scramble_buff, pkt, SCRAMBLE_LENGTH);
     mysql->scramble_buff[SCRAMBLE_LENGTH] = 0;
   }
 
@@ -379,8 +374,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   DBUG_PRINT("info",("Server version = '%s'  capabilites: %lu  status: %u  client_flag: %lu",
 		     mysql->server_version, mysql->server_capabilities,
 		     mysql->server_status, mysql->client_flag));
-
-  compile_time_assert(MYSQL_USERNAME_LENGTH == USERNAME_LENGTH);
 
   /* This needs to be changed as it's not useful with big packets */
   if (mysql->user[0])
@@ -652,8 +645,6 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
 
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
 
-  compile_time_assert(CR_OK == -1);
-  compile_time_assert(CR_ERROR == 0);
   if (res > CR_OK && mysql->net.read_pos[0] != 254)
   {
     /*

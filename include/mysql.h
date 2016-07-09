@@ -87,7 +87,7 @@ extern unsigned int mariadb_deinitialize_ssl;
 #define IS_BLOB(n)	((n) & BLOB_FLAG)
 #define IS_NUM(t)	((t) <= FIELD_TYPE_INT24 || (t) == FIELD_TYPE_YEAR)
 #define IS_NUM_FIELD(f)	 ((f)->flags & NUM_FLAG)
-#define INTERNAL_NUM_FIELD(f) (((f)->type <= MYSQL_TYPE_INT24 && ((f)->type != MYSQL_TYPE_TIMESTAMP || (f)->length == 14 || (f)->length == 8)) || (f)->type == MYSQL_TYPE_YEAR)
+#define INTERNAL_NUM_FIELD(f) (((f)->type <= MYSQL_TYPE_INT24 && ((f)->type != MYSQL_TYPE_TIMESTAMP || (f)->length == 14 || (f)->length == 8)) || (f)->type == MYSQL_TYPE_YEAR || (f)->type == MYSQL_TYPE_NEWDECIMAL || (f)->type == MYSQL_TYPE_DECIMAL)
 
   typedef struct st_mysql_field {
     char *name;			/* Name of column */
@@ -212,7 +212,8 @@ extern unsigned int mariadb_deinitialize_ssl;
     /* MariaDB Connector/C specific */
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
-    MARIADB_OPT_SSL_FP_LIST         /* finger print white list for server certificate verification */
+    MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
+    MARIADB_OPT_VERIFY_LOCAL_INFILE_CALLBACK
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -259,7 +260,7 @@ struct st_mysql_options {
     int (*local_infile_read)(void *, char *, unsigned int);
     void (*local_infile_end)(void *);
     int (*local_infile_error)(void *, char *, unsigned int);
-    void *local_infile_userdata;
+    void *local_infile_userdata[2];
     struct st_mysql_options_extension *extension;
 };
 
