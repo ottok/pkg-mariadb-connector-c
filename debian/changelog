@@ -1,4 +1,4 @@
-mariadb-connector-c (2.3.0-1) UNRELEASED; urgency=low
+mariadb-connector-c (2.3.0-1) unstable; urgency=low
 
   [ Otto Kekäläinen ]
   * Fix d/copyright formatting
@@ -30,7 +30,7 @@ mariadb-connector-c (2.3.0-1) UNRELEASED; urgency=low
   * Add symlink /usr/bin/mysql_config -> mariadb_config in compat package.
     Closes: #766996.
 
- -- Otto Kekäläinen <otto@debian.org>  Sat, 09 Jul 2016 11:13:30 +0300
+ -- Otto Kekäläinen <otto@debian.org>  Sat, 09 Jul 2016 12:07:00 +0300
 
 mariadb-client-lgpl (2.0.0-1) unstable; urgency=low
 
