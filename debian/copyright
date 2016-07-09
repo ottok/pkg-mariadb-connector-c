@@ -1,5 +1,5 @@
 Upstream-Name: mariadb_client
-Source: <https://downloads.mariadb.org/client-native/2.0.0/>
+Source: <https://downloads.mariadb.org/>
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Contact: https://mariadb.atlassian.net/browse/MDEV
 
@@ -22,69 +22,102 @@ License: LGPL-2+
  On Debian systems, the complete text of the GNU Library General Public
  License version 2 can be found in "/usr/share/common-licenses/LGPL-2".
 
+License: LGPL
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; version 2
+ of the License.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+ .
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ MA 02110-1301, USA
+ .
+ On Debian and systems the full text of the GNU Library General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/LGPL-2`
+
+License: BSD-2-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+ .
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ .
+ 2. Redistributions in binary form must the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+License: public-domain
+ The work is public domain (no license).
 
 Files: *
 Copyright:
  2000-2012 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
  2006-2011 The PHP Group
  2012-2013 Monty Program AB
- 2013-
+ 2014-2016 MariaDB Corporation Ab
+ 2014 Kristian Nielsen & MariaDB Corporation
 License: LGPL-2+
 
-
-Files: libmariadb/ma_dyncol.c
+Files: libmariadb/ma_dyncol.*
 Copyright:
  2011-2012 Oleksandr Byelkin
  2011-2013 Monty Program Ab
 License: BSD-2-clause
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions
- are met:
- 1. Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer.
- 2. Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in the
-    documentation and/or other materials provided with the distribution.
- .
- THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
- ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
- BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- POSSIBILITY OF SUCH DAMAGE.
-
 
 Files: zlib/*
 Copyright:
  1995-2005 Jean-loup Gailly
  1995-2005 Mark Adler
 License: zlib/libpng
-  This software is provided 'as-is', without any express or implied
-  warranty.  In no event will the authors be held liable for any damages
-  arising from the use of this software.
-  .
-  Permission is granted to anyone to use this software for any purpose,
-  including commercial applications, and to alter it and redistribute it
-  freely, subject to the following restrictions:
-  .
-  1. The origin of this software must not be misrepresented; you must not
-     claim that you wrote the original software. If you use this software
-     in a product, an acknowledgment in the product documentation would be
-     appreciated but is not required.
-  2. Altered source versions must be plainly marked as such, and must not be
-     misrepresented as being the original software.
-  3. This notice may not be removed or altered from any source distribution.
+ This software is provided 'as-is', without any express or implied
+ warranty.  In no event will the authors be held liable for any damages
+ arising from the use of this software.
+ .
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+ .
+ 1. The origin of this software must not be misrepresented; you must not
+    claim that you wrote the original software. If you use this software
+    in a product, an acknowledgment in the product documentation would be
+    appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+    misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
 
+Files: libmariadb/ma_dtoa.*
+Copyright:
+ 1991, 2000-2001, Lucent Technologies
+ 2007, 2012, Oracle and/or its affiliates.
+License: LGPL
+
+Files: include/getopt.*
+Copyright:
+ 1989-1994, Free Software Foundation, Inc
+License: LGPL-2+
+
+Files: ./libmariadb/dbug.c
+Copyright:
+ 1987, Fred Fish
+License: public-domain
+
+Files: cmake/FindIconv.cmake
+Copyright:
+ 2010, Michael Bell <michael.bell@web.de>
+License: BSD-2-Clause
 
 Files: debian/*
 Copyright:
  2014 Daniel Schepler <schepler@debian.org>
- 2014 Otto Kekäläinen <otto@seravo.fi>
+ 2014-2016 Otto Kekäläinen <otto@debian.org>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -102,9 +135,6 @@ License: GPL-2+
  On Debian systems, the complete text of the GNU General
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
 
-
 Files: debian/patches/*
 Copyright: 2014-2015 Daniel Schepler <schepler@debian.org>
 License: LGPL-2+
-
-

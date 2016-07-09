@@ -1,7 +1,7 @@
 Source: mariadb-connector-c
 Priority: optional
 Maintainer: Debian MySQL Maintainers <pkg-mysql-maint@lists.alioth.debian.org>
-Uploaders: Daniel Schepler <schepler@debian.org>, Otto Kekäläinen <otto@seravo.fi>
+Uploaders: Daniel Schepler <schepler@debian.org>, Otto Kekäläinen <otto@debian.org>
 Build-Depends: debhelper (>= 9), cmake (>= 2.8.8), libssl-dev, zlib1g-dev
 Standards-Version: 3.9.6
 Section: libs
