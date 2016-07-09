@@ -71,6 +71,7 @@
 #include <ma_dyncol.h>
 #include <mysql_async.h>
 
+#define DNS_TIMEOUT 30
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
 
 #undef max_allowed_packet
@@ -223,6 +224,15 @@ static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
       errno= ETIMEDOUT;
       break;
   }
+  s_err=0;
+  if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char*) &s_err, &s_err_size) != 0)
+    return(-1);
+
+  if (s_err)
+  {						/* getsockopt could succeed */
+    errno = s_err;
+    return(-1);					/* but return an error... */
+  }
 #else
   FD_ZERO(&sfds);
   FD_ZERO(&efds);
@@ -233,19 +243,28 @@ static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
   tv.tv_sec= timeout;
 
   res= select((int)s+1, NULL, &sfds, &efds, &tv);
+  if (res== -1)
+  {
+    errno= WSAGetLastError();
+  }
+  else if (res == 0)
+  {
+    errno= ETIMEDOUT;
+    res= SOCKET_ERROR;
+  }
+  else if (FD_ISSET(s, &efds))
+  {
+    int err;
+    int len = sizeof(int);
+    if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char *)&err, &len) != SOCKET_ERROR)
+    {
+      errno= err;
+    }
+    res= SOCKET_ERROR;
+  }
   if (res < 1)
     return -1;
 #endif
-
-  s_err=0;
-  if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char*) &s_err, &s_err_size) != 0)
-    return(-1);
-
-  if (s_err)
-  {						/* getsockopt could succeed */
-    errno = s_err;
-    return(-1);					/* but return an error... */
-  }
   return (0);					/* ok */
 }
 
@@ -635,6 +654,7 @@ static void free_old_query(MYSQL *mysql)
   init_alloc_root(&mysql->field_alloc,8192,0);	/* Assume rowlength < 8192 */
   mysql->fields=0;
   mysql->field_count=0;				/* For API */
+  mysql->info= 0;
   DBUG_VOID_RETURN;
 }
 
@@ -1533,6 +1553,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #ifdef HAVE_SYS_UN_H
   struct	sockaddr_un UNIXaddr;
 #endif
+  time_t start_t= time(NULL);
   init_sigpipe_variables
   DBUG_ENTER("mysql_real_connect");
 
@@ -1667,6 +1688,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     char server_port[NI_MAXSERV];
     int gai_rc, bind_gai_rc;
     int rc;
+#ifdef _WIN32
+    DWORD wait_gai;
+#else
+    unsigned int wait_gai;
+#endif
 
     unix_socket=0;				/* This is not used */
     if (!port)
@@ -1690,24 +1716,62 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
      * bind_address */
     if (mysql->options.bind_address)
     {
-      bind_gai_rc= getaddrinfo(mysql->options.bind_address, 0, &hints, &bind_res);
+      wait_gai= 1;
+      while ((bind_gai_rc= getaddrinfo(mysql->options.bind_address, 0, &hints, &bind_res)) == EAI_AGAIN)
+      {
+        unsigned int timeout= (mysql->options.connect_timeout) ? mysql->options.connect_timeout : DNS_TIMEOUT;
+        if (time(NULL) - start_t > timeout)
+          break;
+#ifndef _WIN32
+        usleep(wait_gai);
+#else
+        Sleep(wait_gai);
+#endif
+        wait_gai*= 2;
+      }
       if (bind_gai_rc != 0 || !bind_res)
       {
-        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
-                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address, bind_gai_rc);
+#ifndef _WIN32
+        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN,
+                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address,
+                     bind_gai_rc == EAI_SYSTEM ? errno : bind_gai_rc);
+#else
+        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN,
+                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address,
+                     WSAGetLastError());
+#endif
         goto error;
       }
     }
 
 
     /* Get the address information for the server using getaddrinfo() */
-    gai_rc= getaddrinfo(host, server_port, &hints, &res);
+    wait_gai= 1;
+    while ((gai_rc= getaddrinfo(host, server_port, &hints, &res)) == EAI_AGAIN)
+    {
+      unsigned int timeout= (mysql->options.connect_timeout) ? mysql->options.connect_timeout : DNS_TIMEOUT;
+      if (time(NULL) - start_t > timeout)
+        break;
+#ifndef _WIN32
+      usleep(wait_gai);
+#else
+      Sleep(wait_gai);
+#endif
+      wait_gai*= 2;
+    }
     if (gai_rc != 0)
     {
       if (bind_res)
         freeaddrinfo(bind_res);
+#ifndef _WIN32
       my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
-                   ER(CR_UNKNOWN_HOST), host, gai_rc);
+                   ER(CR_UNKNOWN_HOST), host,
+                   gai_rc == EAI_SYSTEM ? errno : gai_rc);
+#else
+      my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
+                   ER(CR_UNKNOWN_HOST), host,
+                   WSAGetLastError());
+#endif
       goto error;
     }
 
@@ -2388,7 +2452,17 @@ get_info:
   }
   if (field_count == NULL_LENGTH)		/* LOAD DATA LOCAL INFILE */
   {
-    int error=mysql_handle_local_infile(mysql, (char *)pos);
+    int error= 0;
+    /* check if a callback was specified for load local infile */
+    if (mysql->options.extension && mysql->options.extension->verify_local_infile)
+    {
+      if (mysql->options.extension->verify_local_infile(mysql->options.local_infile_userdata[1], (const char *)pos))
+      {
+        my_set_error(mysql, EE_READ, SQLSTATE_UNKNOWN, "filename could not be verified");
+        DBUG_RETURN(-1);
+      }
+    }
+    error=mysql_handle_local_infile(mysql, (char *)pos);
 
     if ((length=net_safe_read(mysql)) == packet_error || error)
       DBUG_RETURN(-1);
@@ -3071,7 +3145,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
 
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
-    if (*(uint *)arg1)
+    if (*(my_bool *)arg1)
       mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
     else
       mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
@@ -3194,6 +3268,15 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_SECURE_AUTH:
     mysql->options.secure_auth= *(my_bool *)arg1;
+    break;
+  case MARIADB_OPT_VERIFY_LOCAL_INFILE_CALLBACK:
+    {
+      void *arg2= va_arg(ap, void *);
+      CHECK_OPT_EXTENSION_SET(&mysql->options);
+      mysql->options.extension->verify_local_infile= (int (*)(void *, const char *))arg1;
+      if (arg2)
+        mysql->options.local_infile_userdata[1]= arg2;
+    }
     break;
   default:
     va_end(ap);

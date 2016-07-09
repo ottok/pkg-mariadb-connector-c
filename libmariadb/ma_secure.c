@@ -323,44 +323,6 @@ static my_bool ma_check_fingerprint(char *fp1, unsigned int fp1_len,
   return 0;
 }
 
-int my_verify_callback(int ok, X509_STORE_CTX *ctx)
-{
-  X509 *check_cert;
-  SSL *ssl;
-  MYSQL *mysql;
-  DBUG_ENTER("my_verify_callback");
-
-  ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-  DBUG_ASSERT(ssl != NULL);
-  mysql= (MYSQL *)SSL_get_app_data(ssl);
-  DBUG_ASSERT(mysql != NULL);
-
-  /* skip verification if no ca_file/path was specified */
-  if (!mysql->options.ssl_ca && !mysql->options.ssl_capath)
-  {
-    ok= 1;
-    DBUG_RETURN(1);
-  }
-
-  if (!ok)
-  {
-    uint depth;
-    if (!(check_cert= X509_STORE_CTX_get_current_cert(ctx)))
-      DBUG_RETURN(0);
-    depth= X509_STORE_CTX_get_error_depth(ctx);
-    if (depth == 0)
-      ok= 1;
-  }
-
-/*
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                        ER(CR_SSL_CONNECTION_ERROR), 
-                        X509_verify_cert_error_string(ctx->error));
-*/
-  DBUG_RETURN(ok);
-}
-
-
 /*
    allocates a new ssl object
 
@@ -374,7 +336,6 @@ int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 */
 SSL *my_ssl_init(MYSQL *mysql)
 {
-  int verify;
   SSL *ssl= NULL;
 
   DBUG_ENTER("my_ssl_init");
@@ -393,12 +354,6 @@ SSL *my_ssl_init(MYSQL *mysql)
 
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
-
-  verify= (!mysql->options.ssl_ca && !mysql->options.ssl_capath) ?
-           SSL_VERIFY_NONE : SSL_VERIFY_PEER;
-
-  SSL_CTX_set_verify(SSL_context, verify, my_verify_callback);
-  SSL_CTX_set_verify_depth(SSL_context, 1);
 
   pthread_mutex_unlock(&LOCK_ssl_config);
   DBUG_RETURN(ssl);
@@ -426,6 +381,7 @@ int my_ssl_connect(SSL *ssl)
   my_bool blocking;
   MYSQL *mysql;
   long rc;
+  my_bool try_connect= 1;
 
   DBUG_ENTER("my_ssl_connect");
 
@@ -434,21 +390,33 @@ int my_ssl_connect(SSL *ssl)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   CLEAR_CLIENT_ERROR(mysql);
 
-  /* Set socket to blocking if not already set */
+  /* Set socket to non blocking */
   if (!(blocking= vio_is_blocking(mysql->net.vio)))
-    vio_blocking(mysql->net.vio, TRUE, 0);
+    vio_blocking(mysql->net.vio, FALSE, 0);
 
   SSL_clear(ssl);
   SSL_SESSION_set_timeout(SSL_get_session(ssl),
                           mysql->options.connect_timeout);
   SSL_set_fd(ssl, mysql->net.vio->sd);
 
-  if (SSL_connect(ssl) != 1)
+  while (try_connect && (rc= SSL_connect(ssl)) == -1)
+  {
+    switch(SSL_get_error(ssl, rc)) {
+    case SSL_ERROR_WANT_READ:
+      if (vio_wait_or_timeout(mysql->net.vio, TRUE, mysql->options.connect_timeout) < 1)
+        try_connect= 0;
+      break;
+    case SSL_ERROR_WANT_WRITE:
+      if (vio_wait_or_timeout(mysql->net.vio, TRUE, mysql->options.connect_timeout) < 1)
+        try_connect= 0;
+    break;
+    default:
+      try_connect= 0;
+    }
+  }
+  if (rc != 1)
   {
     my_SSL_error(mysql);
-    /* restore blocking mode */
-    if (!blocking)
-      vio_blocking(mysql->net.vio, FALSE, 0);
     DBUG_RETURN(1);
   }
 
