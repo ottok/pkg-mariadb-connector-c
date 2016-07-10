@@ -1,8 +1,9 @@
 Source: mariadb-connector-c
 Priority: optional
 Maintainer: Debian MySQL Maintainers <pkg-mysql-maint@lists.alioth.debian.org>
-Uploaders: Daniel Schepler <schepler@debian.org>, Otto Kekäläinen <otto@debian.org>
-Build-Depends: debhelper (>= 9), cmake (>= 2.8.8), libssl-dev, zlib1g-dev
+Uploaders: Daniel Schepler <schepler@debian.org>,
+           Otto Kekäläinen <otto@debian.org>
+Build-Depends: cmake (>= 2.8.8), debhelper (>= 9), libssl-dev, zlib1g-dev
 Standards-Version: 3.9.8
 Section: libs
 Homepage: https://mariadb.org/
@@ -12,7 +13,7 @@ Vcs-Git: git://anonscm.debian.org/pkg-mysql/mariadb-client-lgpl.git
 Package: libmariadb-dev
 Section: libdevel
 Architecture: any
-Depends: libmariadb2 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libmariadb2 (= ${binary:Version}), ${misc:Depends}, ${shlibs:Depends}
 Provides: libmariadb-client-lgpl-dev
 Conflicts: libmariadb-client-lgpl-dev
 Replaces: libmariadb-client-lgpl-dev
@@ -32,7 +33,7 @@ Description: MariaDB Connector/C, development files
 
 Package: libmariadb2
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}
 Multi-Arch: same
 Description: MariaDB Connector/C
  MariaDB is a fast, stable and true multi-user, multi-threaded SQL database
@@ -47,7 +48,10 @@ Architecture: any
 Section: libdevel
 Priority: extra
 Depends: libmariadb-dev (= ${binary:Version}), ${misc:Depends}
-Conflicts: libmysqlclient-dev, libmariadb-client-lgpl-dev-compat, libmariadbclient-dev, libmariadbclient-dev-compat
+Conflicts: libmariadb-client-lgpl-dev-compat,
+           libmariadbclient-dev,
+           libmariadbclient-dev-compat,
+           libmysqlclient-dev
 Provides: libmariadb-client-lgpl-dev-compat
 Replaces: libmariadb-client-lgpl-dev-compat
 Description: MariaDB Connector/C, compatibility symlinks
