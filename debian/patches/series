@@ -3,3 +3,4 @@ rename_static_lib.patch
 no_install_buildsystem_files.patch
 debian_no_indirect_dependencies.patch
 fix_mariadb_config_plugindir.patch
+fix_my_context_ucontext_case.patch
