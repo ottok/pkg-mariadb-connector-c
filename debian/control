@@ -47,7 +47,7 @@ Architecture: any
 Section: libdevel
 Priority: extra
 Depends: libmariadb-dev (= ${binary:Version}), ${misc:Depends}
-Conflicts: libmysqlclient-dev, libmariadb-client-lgpl-dev-compat
+Conflicts: libmysqlclient-dev, libmariadb-client-lgpl-dev-compat, libmariadbclient-dev, libmariadbclient-dev-compat
 Provides: libmariadb-client-lgpl-dev-compat
 Replaces: libmariadb-client-lgpl-dev-compat
 Description: MariaDB Connector/C, compatibility symlinks
