@@ -1,10 +1,14 @@
-mariadb-connector-c (2.3.0-2) UNRELEASED; urgency=low
+mariadb-connector-c (2.3.0-2) unstable; urgency=low
 
   [ Daniel Schepler ]
   * New patch to fix compilation of my_context.c on architectures
-    other than amd64 and i386.  Closes: #830707.
+    other than amd64 and i386 (Closes: #830707)
 
- -- Daniel Schepler <schepler@debian.org>  Sun, 10 Jul 2016 09:06:42 -0700
+  [ Otto Kekäläinen ]
+  * Make libmariadb-dev-compat conflict libmariadbclient-dev/-compat
+    (Closes: #831229)
+
+ -- Otto Kekäläinen <otto@debian.org>  Thu, 14 Jul 2016 13:18:54 +0300
 
 mariadb-connector-c (2.3.0-1) unstable; urgency=low
 
