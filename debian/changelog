@@ -1,3 +1,9 @@
+mariadb-connector-c (2.3.0-3) UNRELEASED; urgency=low
+
+  * Open d/changelog for next revision
+
+ -- Otto Kekäläinen <otto@debian.org>  Thu, 14 Jul 2016 23:28:04 +0300
+
 mariadb-connector-c (2.3.0-2) unstable; urgency=low
 
   [ Daniel Schepler ]
