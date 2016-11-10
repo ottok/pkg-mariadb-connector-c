@@ -1,8 +1,13 @@
-mariadb-connector-c (2.3.0-3) UNRELEASED; urgency=low
+mariadb-connector-c (2.3.1-1) unstable; urgency=low
 
-  * Open d/changelog for next revision
+  [ Dieter Adriaenssens ]
+  * Add DEP-12 formatted upstream metadata file
 
- -- Otto Kekäläinen <otto@debian.org>  Thu, 14 Jul 2016 23:28:04 +0300
+  [ Otto Kekäläinen ]
+  * New upstream release 2.3.1
+  * Mark missing Multi-Arch as suggested by Multiarch hinter
+
+ -- Otto Kekäläinen <otto@debian.org>  Thu, 10 Nov 2016 22:40:08 +0200
 
 mariadb-connector-c (2.3.0-2) unstable; urgency=low
 
