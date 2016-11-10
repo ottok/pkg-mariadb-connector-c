@@ -21,7 +21,6 @@
 #ifndef _global_h
 #define _global_h
 
-
 #ifdef _WIN32
 #include <config-win.h>
 #else
