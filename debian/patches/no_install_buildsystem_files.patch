@@ -4,7 +4,7 @@ Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
 --- a/libmariadb/CMakeLists.txt
 +++ b/libmariadb/CMakeLists.txt
-@@ -438,7 +438,10 @@ INSTALL(TARGETS
+@@ -443,7 +443,10 @@ INSTALL(TARGETS
            ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/${LIBSUFFIX_INSTALL_DIR}")
  
  INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/

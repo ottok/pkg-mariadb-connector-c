@@ -11,7 +11,7 @@ Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
 
 --- a/libmariadb/CMakeLists.txt
 +++ b/libmariadb/CMakeLists.txt
-@@ -405,6 +405,14 @@ SET_TARGET_PROPERTIES(libmariadb PROPERT
+@@ -410,6 +410,14 @@ SET_TARGET_PROPERTIES(libmariadb PROPERT
     ${CPACK_PACKAGE_VERSION_MAJOR}
     SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
  
@@ -26,7 +26,7 @@ Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
  #
  # Installation
  #
-@@ -418,8 +426,8 @@ IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+@@ -423,8 +431,8 @@ IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
    SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${LIBSUFFIX_INSTALL_DIR})
    create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
    create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})

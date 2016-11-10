@@ -101,7 +101,7 @@ Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
  MESSAGE(STATUS "Required: ${CMAKE_REQUIRED_LIBRARIES}")
 --- a/libmariadb/CMakeLists.txt
 +++ b/libmariadb/CMakeLists.txt
-@@ -415,7 +415,7 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlin
+@@ -420,7 +420,7 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlin
  # of the config program. To make sure these programs can
  # use mariadb client library we provide libmysql symlinks
  IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
@@ -110,7 +110,7 @@ Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
    create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
    create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
    create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
-@@ -425,9 +425,9 @@ ENDIF()
+@@ -430,9 +430,9 @@ ENDIF()
  
  INSTALL(TARGETS
            libmariadb mariadbclient
