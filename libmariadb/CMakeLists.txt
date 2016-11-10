@@ -11,7 +11,6 @@ SET(EXPORT_SYMBOLS
  load_defaults
  mariadb_connection
  mariadb_convert_string
- mariadb_deinitialize_ssl
  mariadb_dyncol_check
  mariadb_dyncol_column_cmp_named
  mariadb_dyncol_column_count
@@ -221,6 +220,10 @@ SET(EXPORT_SYMBOLS
  mysql_use_result
  mysql_warning_count)
 
+IF(WITH_OPENSSL)
+  SET(EXPORT_SYMBOLS ${EXPORT_SYMBOLS} mariadb_deinitialize_ssl)
+ENDIF()
+
 IF(WIN32)
   SET(EXPORT_CONTENT "EXPORTS\n")
   FOREACH(SYMBOL ${EXPORT_SYMBOLS})
@@ -322,8 +325,10 @@ my_loaddata.c
 my_stmt_codec.c
 client_plugin.c
 my_auth.c
-ma_secure.c
 )
+IF(WITH_OPENSSL)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ma_secure.c)
+ENDIF()
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)
