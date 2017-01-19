@@ -270,7 +270,7 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     {
       double val= my_atod(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
-      float8store(r_param->buffer, val);
+      doublestore((uchar *)r_param->buffer, val);
       r_param->buffer_length= sizeof(double);
     } 
     break;
@@ -278,7 +278,7 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     {
       float val= (float)my_atod(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
-      float4store(r_param->buffer, val);
+      floatstore((uchar *)r_param->buffer, val);
       r_param->buffer_length= sizeof(float);
     } 
     break;
@@ -918,23 +918,7 @@ static
 void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
              unsigned char **row)
 {
-  /* If r_praram->buffer_type is not a binary type or binary_flag isn't set,
-     we do conversion from string */
-  if (!(field->flags & BINARY_FLAG) || 
-         (r_param->buffer_type != MYSQL_TYPE_NEWDECIMAL &&
-          r_param->buffer_type != MYSQL_TYPE_DECIMAL &&
-          r_param->buffer_type != MYSQL_TYPE_GEOMETRY &&
-          r_param->buffer_type != MYSQL_TYPE_ENUM &&
-          r_param->buffer_type != MYSQL_TYPE_SET &&
-          r_param->buffer_type != MYSQL_TYPE_TINY_BLOB &&
-          r_param->buffer_type != MYSQL_TYPE_MEDIUM_BLOB &&
-          r_param->buffer_type != MYSQL_TYPE_LONG_BLOB &&
-          r_param->buffer_type != MYSQL_TYPE_BLOB))
-  {
-    ps_fetch_string(r_param, field, row);
-    return;
-  }
-  else
+  if (field->charsetnr == 63)
   {
     ulong field_length= *r_param->length= net_field_length(row);
     uchar *current_pos= (*row) + r_param->offset,
@@ -945,20 +929,16 @@ void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
     {
       copylen= end - current_pos;
       if (r_param->buffer_length)
-      {
         memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
-        if (copylen < r_param->buffer_length &&
-            r_param->buffer_type == MYSQL_TYPE_STRING)
-          ((char *)r_param->buffer)[copylen]= 0;
-      }
     }
+    if (copylen < r_param->buffer_length &&
+        r_param->buffer_type == MYSQL_TYPE_STRING)
+      ((char *)r_param->buffer)[copylen]= 0;
     *r_param->error= copylen > r_param->buffer_length;
-    /* don't count trailing zero if we fetch into string */
-    if (r_param->buffer_type == MYSQL_TYPE_STRING &&
-      !*r_param->error)
-      field_length--;
     (*row)+= field_length;
   }
+  else
+    ps_fetch_string(r_param, field, row);
 }
 /* }}} */
 
