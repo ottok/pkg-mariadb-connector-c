@@ -90,7 +90,7 @@ Forwarded: https://lists.launchpad.net/maria-developers/msg07924.html
  ENDFOREACH()
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -314,7 +314,7 @@ ELSE()
+@@ -316,7 +316,7 @@ ELSE()
  ENDIF()
  MESSAGE(STATUS "Installation layout: ${INSTALL_LAYOUT}")
  MESSAGE(STATUS "Include files will be installed in ${PREFIX_INSTALL_DIR}/${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")

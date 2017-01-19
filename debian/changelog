@@ -1,3 +1,12 @@
+mariadb-connector-c (2.3.2-1) unstable; urgency=low
+
+  * New upstream release 2.3.2
+    - Includes fix for mariadb_config that emitted trailing binary
+      garbage on mips64el (Closes: #850142)
+    - Includes fix for missing my_stmt.h (Closes: #849125)
+
+ -- Otto Kekäläinen <otto@debian.org>  Thu, 19 Jan 2017 21:16:14 +0200
+
 mariadb-connector-c (2.3.1-1) unstable; urgency=low
 
   [ Dieter Adriaenssens ]
