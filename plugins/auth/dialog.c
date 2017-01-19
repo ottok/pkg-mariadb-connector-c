@@ -46,7 +46,10 @@ mysql_declare_client_plugin(AUTHENTICATION)
   "Sergei Golubchik, Georg Richter",
   "Dialog Client Authentication Plugin",
   {0,1,0},
+  "LGPL",
+  NULL,
   auth_dialog_init,
+  NULL,
   NULL,
   auth_dialog_open
 mysql_end_client_plugin;
@@ -124,7 +127,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   uchar type;
   char dialog_buffer[1024];
   char *response;
-  size_t packet_length;
+  int packet_length;
   my_bool first_loop= TRUE;
 
   do {
@@ -141,15 +144,12 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       if (!type || type == 254)
         return CR_OK_HANDSHAKE_COMPLETE;
 
-      /* shift one bit */
-      type= type >> 1;
-
-      if (type == 2 && 
+      if ((type >> 1) == 2 &&
           first_loop &&
           mysql->passwd && mysql->passwd[0])
         response= mysql->passwd;
       else
-        response= auth_dialog_func(mysql, type,
+        response= auth_dialog_func(mysql, type >> 1,
                                   (const char *)packet,
                                   dialog_buffer, 1024);
     }
@@ -165,7 +165,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
     first_loop= FALSE;
 
-  } while(type != 2);
+  } while((type & 1) != 1);
   return CR_OK;
 }
 /* }}} */
