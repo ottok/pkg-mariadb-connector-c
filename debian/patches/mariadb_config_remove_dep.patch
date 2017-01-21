@@ -1,0 +1,37 @@
+Description: Remove dependency and don't link against mariadbclient
+Author: Georg Richter <georg@mariadb.com>
+Forwarded: no
+
+diff --git a/mariadb_config/CMakeLists.txt b/mariadb_config/CMakeLists.txt
+index 69d7c3a..080621d 100644
+--- a/mariadb_config/CMakeLists.txt
++++ b/mariadb_config/CMakeLists.txt
+@@ -28,7 +28,6 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
+                ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
+ 
+ ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
+-TARGET_LINK_LIBRARIES(mariadb_config mariadbclient)
+ 
+ # Installation
+ #
+diff --git a/mariadb_config/mariadb_config.c.in b/mariadb_config/mariadb_config.c.in
+index 53619b2..73cff82 100644
+--- a/mariadb_config/mariadb_config.c.in
++++ b/mariadb_config/mariadb_config.c.in
+@@ -1,6 +1,5 @@
+-#include <my_global.h>
+-#include <my_sys.h>
+ #include <getopt.h>
++#include <stdlib.h>
+ #include <stdio.h>
+ 
+ #define INCLUDE "-I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/mysql"
+@@ -12,6 +11,8 @@
+ #define SOCKET  "@MYSQL_UNIX_ADDR@"
+ #define PORT "@MYSQL_PORT@"
+ 
++const char *my_progname;
++
+ static struct option long_options[]=
+ {
+   {"cflags", no_argument, 0, 'a'},
