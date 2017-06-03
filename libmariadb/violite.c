@@ -12,8 +12,8 @@
    
    You should have received a copy of the GNU Library General Public
    License along with this library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
-   MA 02111-1307, USA */
+   Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+   MA 02111-1301, USA */
 
 /*
   Note that we can't have assertion on file descriptors;  The reason for
@@ -127,13 +127,13 @@ void vio_timeout(Vio *vio, int type, uint timeval)
 
 void vio_read_timeout(Vio *vio, uint timeout)
 {
-  vio->read_timeout= (timeout > 0) ? timeout * 1000 : -1;
+  vio->read_timeout= timeout * 1000;
   vio_timeout(vio, SO_RCVTIMEO, vio->read_timeout);
 }
 
 void vio_write_timeout(Vio *vio, uint timeout)
 {
-  vio->write_timeout= (timeout > 0) ? timeout * 1000 : -1;
+  vio->write_timeout= timeout * 1000;
   vio_timeout(vio, SO_SNDTIMEO, vio->write_timeout);
 }
 
@@ -248,7 +248,7 @@ int vio_wait_or_timeout(Vio *vio, my_bool is_read, int timeout)
 
     do {
       rc= poll(&p_fd, 1, timeout);
-    } while (rc == -1 || errno == EINTR);
+    } while (rc == -1 && errno == EINTR);
 
     if (rc == 0)
       errno= ETIMEDOUT;
