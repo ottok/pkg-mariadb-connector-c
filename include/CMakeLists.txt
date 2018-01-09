@@ -1,37 +1,36 @@
-SET(MARIADB_CLIENT_INCLUDES config-win.h
-                            dbug.h
-                            errmsg.h
-                            getopt.h
-                            hash.h
-                            ma_common.h
-                            m_ctype.h
-                            m_string.h
-                            ma_dyncol.h
-                            ma_secure.h
-                            my_alarm.h
-                            my_base.h
-                            my_config.h.in
-                            my_dir.h
-                            my_global.h
-                            my_list.h
-                            my_net.h
-                            my_no_pthread.h
-                            my_pthread.h
-                            my_stmt.h
-                            my_sys.h
-                            mysql.h
-                            mysql_com.h
-                            mysql_io.h
-                            mysql_mm.h
-                            mysql_priv.h
-                            mysql_version.h
-                            mysql_wireprotocol.h
-                            mysqld_error.h
-                            mysys_err.h
-                            sha1.h
-                            thr_alarm.h
-                            violite.h
-                            mysql/client_plugin.h
-                            mysql/plugin_auth_common.h
-                            mysql/plugin_auth.h
-                            PARENT_SCOPE)
+SET(MARIADB_CLIENT_INCLUDES ${CC_SOURCE_DIR}/include/mariadb_com.h
+                            ${CC_SOURCE_DIR}/include/mysql.h
+                            ${CC_SOURCE_DIR}/include/mariadb_stmt.h
+                            ${CC_SOURCE_DIR}/include/ma_pvio.h
+                            ${CC_SOURCE_DIR}/include/ma_tls.h
+                            ${CC_BINARY_DIR}/include/mariadb_version.h
+                            ${CC_SOURCE_DIR}/include/ma_list.h
+                            ${CC_SOURCE_DIR}/include/errmsg.h
+                            ${CC_SOURCE_DIR}/include/mariadb_dyncol.h
+                            ${CC_SOURCE_DIR}/include/mariadb_ctype.h
+                            ${CC_SOURCE_DIR}/include/mysqld_error.h
+                            )
+SET(MYSQL_ADDITIONAL_INCLUDES
+   ${CC_SOURCE_DIR}/include/mysql/client_plugin.h
+   ${CC_SOURCE_DIR}/include/mysql/plugin_auth_common.h
+   ${CC_SOURCE_DIR}/include/mysql/plugin_auth.h
+   )
+SET(MARIADB_ADDITIONAL_INCLUDES
+   ${CC_SOURCE_DIR}/include/mariadb/ma_io.h
+   )
+IF(WIN32)
+  SET(WIX_INCLUDES ${MARIADB_CLIENT_INCLUDES} ${MARIADB_ADDITIONAL_INCLUDES} ${MYSQL_ADDITIONAL_INCLUDES} PARENT_SCOPE)
+ENDIF()
+
+INSTALL(FILES
+   ${MARIADB_CLIENT_INCLUDES}
+   DESTINATION ${INSTALL_INCLUDEDIR}
+   COMPONENT Development)
+INSTALL(FILES
+   ${MYSQL_ADDITIONAL_INCLUDES}
+   DESTINATION ${INSTALL_INCLUDEDIR}/mysql
+   COMPONENT Development)
+INSTALL(FILES
+   ${MARIADB_ADDITIONAL_INCLUDES}
+   DESTINATION ${INSTALL_INCLUDEDIR}/mariadb
+   COMPONENT Development)

@@ -5,7 +5,6 @@
 #  BSD license.
 #  For details see the COPYING-CMAKE-SCRIPTS file.
 #
-
 # This file is included by CMakeLists.txt and
 # checks for various header files.
 # You will find the appropiate defines in 
@@ -72,9 +71,6 @@ CHECK_INCLUDE_FILES (sys/un.h HAVE_SYS_UN_H)
 CHECK_INCLUDE_FILES (sysent.h HAVE_SYSENT_H)
 CHECK_INCLUDE_FILES (termio.h HAVE_TERMIO_H)
 CHECK_INCLUDE_FILES (termios.h HAVE_TERMIOS_H)
-CHECK_INCLUDE_FILES (ucontext.h HAVE_UCONTEXT_H)
-IF(NOT HAVE_UCONTEXT_H)
-  CHECK_INCLUDE_FILES (sys/ucontext.h HAVE_UCONTEXT_H)
-ENDIF()
 CHECK_INCLUDE_FILES (unistd.h HAVE_UNISTD_H)
 CHECK_INCLUDE_FILES (utime.h HAVE_UTIME_H)
+CHECK_INCLUDE_FILES (ucontext.h HAVE_UCONTEXT_H)

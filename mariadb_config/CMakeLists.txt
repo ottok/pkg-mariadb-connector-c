@@ -1,36 +1,49 @@
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
 
-# Figure out additional libraries for use with 
+# Figure out additional libraries for use with
 
-FOREACH (dep ${libmariadb_LIB_DEPENDS})
-  STRING(REGEX MATCH "^-l.*$" out "${dep}")
-  IF(out)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${dep}")
-  ENDIF(out)
-ENDFOREACH(dep)
-
-IF(UNIX)
-  IF(OPENSSL_LIBRARIES)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -lssl")
+FUNCTION(GET_LIB_NAME LIB_NAME LIB_OUT)
+  IF(APPLE)
+    STRING(FIND ${LIB_NAME} ".dylib" IS_SO)
+  ELSE()
+    STRING(FIND ${LIB_NAME} ".so" IS_SO)
   ENDIF()
+  IF(NOT ${IS_SO} STREQUAL "-1")
+    GET_FILENAME_COMPONENT(LIB_FILE ${LIB_NAME} NAME_WE)
+  ELSE()
+    SET(LIB_FILE ${LIB_NAME})
+  ENDIF()
+  SET(LIB_FILE "-l${LIB_FILE}")
+  STRING(REPLACE "-llib" "-l" LIB_FILE ${LIB_FILE})
+  SET(${LIB_OUT} ${LIB_FILE} PARENT_SCOPE)
+ENDFUNCTION()
+
+LIST(LENGTH SYSTEM_LIBS rllength)
+IF(${rllength} GREATER 0)
+  LIST(REMOVE_DUPLICATES SYSTEM_LIBS)
+ENDIF()
+
+FOREACH (LIB_NAME ${SYSTEM_LIBS})
+  GET_LIB_NAME(${LIB_NAME} LIB_OUT)
+  SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
+ENDFOREACH()
+STRING(STRIP ${extra_dynamic_LDFLAGS} extra_dynamic_LDFLAGS)
+LIST(REMOVE_DUPLICATES extra_dynamic_LDFLAGS)
+
+IF(UNIX AND NOT APPLE)
   IF(ICONV_EXTERNAL)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${ICONV_LIBRARIES}")
+    GET_LIB_NAME(${ICONV_LIBRARIES} LIB_OUT)
+    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
   ENDIF()
-  FOREACH(lib ${EXTRA_LIBS})
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -l${lib}")
-  ENDFOREACH()
-  IF(WITH_SQLITE)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -lsqlite")
-  ENDIF()  
-ENDIF(UNIX)
+ENDIF()
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
                ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
 
 ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
-TARGET_LINK_LIBRARIES(mariadb_config)
 
 # Installation
 #
 INSTALL(TARGETS mariadb_config
-        DESTINATION "bin")
+        DESTINATION "bin"
+        COMPONENT Development)

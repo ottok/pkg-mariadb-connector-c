@@ -39,9 +39,9 @@
 
 //#include "strings_def.h"
 //#include <my_base.h> /* for EOVERFLOW on Windows */
-#include <my_global.h>
+#include <ma_global.h>
 #include <memory.h>
-#include "m_string.h"
+#include "ma_string.h"
 
 /**
    Appears to suffice to not call malloc() in most cases.
@@ -108,7 +108,7 @@ size_t ma_fcvt(double x, int precision, char *to, my_bool *error)
   }
 
   src= res;
-  len= end - src;
+  len= (int)(end - src);
 
   if (sign)
     *dst++= '-';
@@ -240,7 +240,7 @@ size_t ma_gcvt(double x, my_gcvt_arg_type type, int width, char *to,
     *error= FALSE;
 
   src= res;
-  len= end - res;
+  len= (int)(end - res);
 
   /*
     Number of digits in the exponent from the 'e' conversion.
@@ -332,7 +332,7 @@ size_t ma_gcvt(double x, my_gcvt_arg_type type, int width, char *to,
       dtoa_free(res, buf, sizeof(buf));
       res= dtoa(x, 5, width - decpt, &decpt, &sign, &end, buf, sizeof(buf));
       src= res;
-      len= end - res;
+      len= (int)(end - res);
     }
 
     if (len == 0)
@@ -398,7 +398,7 @@ size_t ma_gcvt(double x, my_gcvt_arg_type type, int width, char *to,
       dtoa_free(res, buf, sizeof(buf));
       res= dtoa(x, 4, width, &decpt, &sign, &end, buf, sizeof(buf));
       src= res;
-      len= end - res;
+      len= (int)(end - res);
       if (--decpt < 0)
         decpt= -decpt;
     }
@@ -633,7 +633,7 @@ static Bigint *Balloc(int k, Stack_alloc *alloc)
     int x, len;
 
     x= 1 << k;
-    len= MY_ALIGN(sizeof(Bigint) + x * sizeof(ULong), sizeof(char *));
+    len= MY_ALIGN(sizeof(Bigint) + x * sizeof(ULong), SIZEOF_CHARP);
 
     if (alloc->free + len <= alloc->end)
     {
@@ -685,7 +685,7 @@ static void Bfree(Bigint *v, Stack_alloc *alloc)
 static char *dtoa_alloc(int i, Stack_alloc *alloc)
 {
   char *rv;
-  int aligned_size= MY_ALIGN(i, sizeof(char *));
+  int aligned_size= MY_ALIGN(i, SIZEOF_CHARP);
   if (alloc->free + aligned_size <= alloc->end)
   {
     rv= alloc->free;
