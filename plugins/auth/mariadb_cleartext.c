@@ -16,7 +16,7 @@
    or write to the Free Software Foundation, Inc., 
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 *************************************************************************************/
-#include <my_global.h>
+#include <ma_global.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
@@ -48,12 +48,19 @@ static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_ERROR;
 
   /* write password including terminating zero character */
-  return vio->write_packet(vio, (const unsigned char *) mysql->passwd, strlen(mysql->passwd) + 1) ?
+  return vio->write_packet(vio, (const unsigned char *) mysql->passwd, (int)strlen(mysql->passwd) + 1) ?
          CR_ERROR : CR_OK;
 }
 /* }}} */
 
-mysql_declare_client_plugin(AUTHENTICATION)
+#ifndef HAVE_DIALOG_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION auth_cleartext_plugin=
+#else
+struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+#endif
+{
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "mysql_clear_password",
   "Georg Richter",
   "MariaDB clear password authentication plugin",
@@ -64,6 +71,6 @@ mysql_declare_client_plugin(AUTHENTICATION)
   NULL,
   NULL,
   clear_password_auth_client
-mysql_end_client_plugin;
+};
 
 

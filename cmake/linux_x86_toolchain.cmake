@@ -5,7 +5,6 @@
 #  BSD license.
 #  For details see the COPYING-CMAKE-SCRIPTS file.
 #
-
 # toolchain file for building a 32bit version on a 64bit host
 
 # Usage:

@@ -20,7 +20,7 @@
 #define _GNU_SOURCE 1
 #endif
 
-#include <my_global.h>
+#include <ma_global.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
@@ -41,7 +41,14 @@ static int auth_dialog_init(char *unused1,
 
 mysql_authentication_dialog_ask_t auth_dialog_func;
 
-mysql_declare_client_plugin(AUTHENTICATION)
+#ifndef HAVE_DIALOG_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION auth_dialog_plugin=
+#else
+struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+#endif
+{
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "dialog",
   "Sergei Golubchik, Georg Richter",
   "Dialog Client Authentication Plugin",
@@ -52,7 +59,7 @@ mysql_declare_client_plugin(AUTHENTICATION)
   NULL,
   NULL,
   auth_dialog_open
-mysql_end_client_plugin;
+};
 
 
 /* {{{ static char *auth_dialog_native_prompt */
@@ -72,7 +79,7 @@ mysql_end_client_plugin;
   RETURNS
     Input buffer
 */
-static char *auth_dialog_native_prompt(MYSQL *mysql,
+static char *auth_dialog_native_prompt(MYSQL *mysql __attribute__((unused)),
                                        int type,
                                        const char *prompt,
                                        char *buffer,
@@ -96,7 +103,7 @@ static char *auth_dialog_native_prompt(MYSQL *mysql,
   }
   else
   {
-    get_tty_password("", buffer, buffer_len - 1);
+    get_tty_password((char *)"", buffer, buffer_len - 1);
   }
   return buffer;
 }
@@ -124,14 +131,14 @@ static char *auth_dialog_native_prompt(MYSQL *mysql,
 static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
   uchar *packet;
-  uchar type;
+  uchar type= 0;
   char dialog_buffer[1024];
   char *response;
   int packet_length;
   my_bool first_loop= TRUE;
 
   do {
-    if ((packet_length= vio->read_packet(vio, &packet)) < 0)
+    if ((packet_length= vio->read_packet(vio, &packet)) == -1)
       /* read error */
       return CR_ERROR;
 
@@ -160,7 +167,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       response= mysql->passwd;
     }
     if (!response ||
-        vio->write_packet(vio, response, strlen(response) + 1))
+        vio->write_packet(vio, (uchar *)response, (int)strlen(response) + 1))
       return CR_ERROR;
 
     first_loop= FALSE;

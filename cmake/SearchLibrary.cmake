@@ -5,7 +5,6 @@
 #  BSD license.
 #  For details see the COPYING-CMAKE-SCRIPTS file.
 #
-
 INCLUDE(CheckFunctionExists)
 INCLUDE(CheckLibraryExists)
  
