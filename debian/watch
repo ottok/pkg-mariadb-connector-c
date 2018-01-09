@@ -1,5 +1,4 @@
 version=3
 opts=pgpsigurlmangle=s/$/.asc/,uversionmangle=s/-(rc|beta)/~$1/,pasv \
-   ftp://ftp.osuosl.org/pub/mariadb/connector-c-2(.*)/mariadb-connector-c-(.*)-src\.tar\.(?:xz|bz2|gz) \
+   ftp://ftp.osuosl.org/pub/mariadb/connector-c-(.*)/mariadb-connector-c-(.*)-src\.tar\.(?:xz|bz2|gz) \
    debian uupdate
-
