@@ -4,7 +4,7 @@ Maintainer: Debian MySQL Maintainers <pkg-mysql-maint@lists.alioth.debian.org>
 Uploaders: Daniel Schepler <schepler@debian.org>,
            Otto Kekäläinen <otto@debian.org>
 Build-Depends: cmake (>= 2.8.8), debhelper (>= 9), libssl-dev, zlib1g-dev
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 Section: libs
 Homepage: https://mariadb.org/
 Vcs-Browser: https://salsa.debian.org/mariadb-team/mariadb-connector-c
