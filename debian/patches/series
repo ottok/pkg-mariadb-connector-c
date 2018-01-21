@@ -1,4 +1,0 @@
-lib_install_dir.patch
-rename_static_lib.patch
-no_install_buildsystem_files.patch
-debian_no_indirect_dependencies.patch
