@@ -3,7 +3,7 @@
 include /usr/share/dpkg/architecture.mk
 
 %:
-	dh $@ --buildsystem=cmake
+	dh $@ --buildsystem=cmake --list-missing
 
 override_dh_clean:
 	dh_clean -O--buildsystem=cmake \
