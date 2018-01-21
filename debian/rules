@@ -12,6 +12,7 @@ override_dh_clean:
 override_dh_auto_configure:
 	dh_auto_configure -O--buildsystem=cmake -- \
 	-DINSTALL_LAYOUT:STRING=DEB \
+	-DWITH_MYSQLCOMPAT=ON \
 	-DWITH_EXTERNAL_ZLIB:BOOL=ON \
 	-DMYSQL_UNIX_ADDR:STRING=/var/run/mysqld/mysqld.sock
 
