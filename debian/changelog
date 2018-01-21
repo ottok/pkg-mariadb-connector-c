@@ -1,8 +1,8 @@
-mariadb-connector-c (3.0.2-1) UNRELEASED; urgency=medium
+mariadb-connector-c (3.0.3-1) UNRELEASED; urgency=medium
 
   * Update git links after project migrated to Salsa
   * Update watch file to check for all new releases, not just from 2.x series
-  * New upstream version 3.0.2
+  * New upstream version 3.0.3
 
  -- Otto Kekäläinen <otto@debian.org>  Tue, 09 Jan 2018 10:03:10 +0000
 
