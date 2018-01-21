@@ -46,7 +46,7 @@ static int bind_fetch(MYSQL *mysql, int row_count)
   FAIL_IF(!stmt, mysql_error(mysql));
 
   strcpy(query, "INSERT INTO test_bind_fetch VALUES (?, ?, ?, ?, ?, ?, ?)");
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   FAIL_UNLESS(mysql_stmt_param_count(stmt) == 7, "ParamCount != 7");
@@ -85,7 +85,7 @@ static int bind_fetch(MYSQL *mysql, int row_count)
   FAIL_IF(!stmt, mysql_error(mysql));
 
   strcpy(query, "SELECT * FROM test_bind_fetch");
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   for (i= 0; i < (int) array_elements(my_bind); i++)
@@ -199,7 +199,7 @@ static int test_fetch_seek(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -286,7 +286,7 @@ static int test_fetch_offset(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -408,7 +408,7 @@ static int test_fetch_column(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -521,7 +521,7 @@ static int test_fetch_nobuffs(MYSQL *mysql)
 
   stmt = mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -612,7 +612,7 @@ static int test_fetch_null(MYSQL *mysql)
   stmt = mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_result(stmt, my_bind);
@@ -728,7 +728,7 @@ static int test_fetch_date(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_result(stmt, my_bind);
@@ -924,7 +924,56 @@ static int test_fetch_double(MYSQL *mysql)
   return rc;
 }
 
+static int test_conc281(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[2];
+  unsigned long length= 0;
+  char buffer[2048];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc282");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE conc282 (a blob, b varchar(1000), c int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO conc282 VALUES (REPEAT('A',2000), REPEAT('B', 999),3)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a, b FROM conc282"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 2);
+
+  bind[0].buffer_type= MYSQL_TYPE_BLOB;
+  bind[0].buffer= buffer;
+  bind[0].buffer_length= 2048;
+  bind[0].length= &length;
+
+  rc= mysql_stmt_fetch_column(stmt, &bind[0], 0, 0);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(length != 2000, "Expected length= 2000");
+  FAIL_IF(buffer[0] != 'A' || buffer[1999] != 'A', "Wrong result");
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE conc282");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc281", test_conc281, 1, 0, NULL, NULL},
   {"test_fetch_seek", test_fetch_seek, 1, 0, NULL , NULL},
   {"test_fetch_offset", test_fetch_offset, 1, 0, NULL , NULL},
   {"test_fetch_column", test_fetch_column, 1, 0, NULL , NULL},

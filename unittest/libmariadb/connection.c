@@ -834,7 +834,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
                       MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
   my_bool options_bool[]= {MYSQL_OPT_RECONNECT, MYSQL_REPORT_DATA_TRUNCATION,
                            MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
-#ifdef _WIN32    
+#ifdef _WIN32
     MYSQL_OPT_NAMED_PIPE,
 #endif
                           0};
@@ -877,7 +877,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
     mysql_options(mysql, options_char[i], char1);
     char2= NULL;
     mysql_get_optionv(mysql, options_char[i], (void *)&char2);
-    if (options_char[i] != MYSQL_SET_CHARSET_NAME) 
+    if (options_char[i] != MYSQL_SET_CHARSET_NAME)
       FAIL_IF(strcmp(char1, char2), "mysql_get_optionv (char) failed");
   }
 
@@ -1014,6 +1014,9 @@ static int test_reset(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
 
+  rc= mysql_query(mysql, "DROP TABLE IF exists t1");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);
 
@@ -1023,6 +1026,11 @@ static int test_reset(MYSQL *mysql)
   FAIL_IF(mysql_affected_rows(mysql) != 3, "Expected 3 rows");
 
   rc= mysql_reset_connection(mysql);
+  if (rc && mysql_errno(mysql) == 1047)
+  {
+    diag("server doesn't support RESET_CONNECTION");
+    return SKIP;
+  }
   check_mysql_rc(rc, mysql);
 
   FAIL_IF(mysql_affected_rows(mysql) != ~(unsigned long)0, "Expected 0 rows");
@@ -1063,7 +1071,7 @@ static int test_auth256(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   int rc;
   MYSQL_RES *res;
-  int num_rows= 0;
+  my_ulonglong num_rows= 0;
 
   rc= mysql_query(my, "SELECT * FROM information_schema.plugins where plugin_name='sha256_password'");
   check_mysql_rc(rc, mysql);
@@ -1210,6 +1218,7 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+  diag("charset: %s", mysql_character_set_name(mysql));
   FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
   mysql_close(mysql);
 
@@ -1231,8 +1240,6 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
 
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
   check_mysql_rc(rc, mysql);
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
-  check_mysql_rc(rc, mysql);
 
   if (!my_test_connect(mysql, hostname, username,
                              password, schema, port, socketname, 0))
@@ -1240,7 +1247,8 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
-  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+
+  FAIL_IF(strcmp("utf8", mysql_character_set_name(mysql)), "Expected charset utf8");
   mysql_close(mysql);
 
   remove("./mdev13100.cnf");
@@ -1248,8 +1256,205 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
   return OK; 
 }
 
+static int test_conc276(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+  my_bool val= 1;
+
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &val);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
+  {
+    diag("Connection failed. Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+
+  rc= mariadb_reconnect(mysql);
+  check_mysql_rc(rc, mysql);
+
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+  /* this shouldn't crash anymore */
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_mdev9059_1(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @a:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @b:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SELECT @a,@b");
+
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
+                              port, socketname,
+                              CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
+
+  rc= mysql_query(mysql, "SET @a:=0, @b:=0");
+  check_mysql_rc(rc, mysql);
+
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_mdev9059_2(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @a:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @b:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "this is an error, connect should fail");
+
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+
+  FAIL_IF(!mysql_errno(mysql), "Error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_mdev9059_3(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @a:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @b:=1");
+
+  my_test_connect(mysql, hostname, "thisuserdoesntexist", password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+
+  diag("error (expected): %s", mysql_error(mysql));
+  FAIL_IF(!mysql_errno(mysql), "Error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_conc277(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+
+
+  mysql_library_end();
+  mysql= mysql_init(NULL);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
+
+/* CONC-297: libmysql incompatibility: According to the documentation
+   load data local infile will be enabled by passing NULL pointer 
+   or a pointer to an unsigned int value */
+static int test_conc297(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  int  local_infile= 0;
+
+  mysql= mysql_init(NULL);
+  mysql_optionsv(mysql, MYSQL_OPT_LOCAL_INFILE, NULL);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+
+  mysql_get_option(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  FAIL_IF(!local_infile, "local infile was not enabled");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  local_infile= 0;
+  mysql_optionsv(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+  mysql_get_option(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  FAIL_IF(local_infile, "local infile was not disabled");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  local_infile= 1;
+  mysql_optionsv(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+  mysql_get_option(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  FAIL_IF(!local_infile, "local infile was not enabled");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_mdev14647(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  int rc;
+  const char *data= "0";
+  size_t length= 0;
+  long server_capabilities;
+
+  mysql= mysql_init(NULL);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+
+  if (!mariadb_connection(mysql))
+  {
+    diag("MySQL doesn't send SESSION_TRACK_STATE_CHANGE");
+    return SKIP;
+  }
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &server_capabilities);
+
+  if (!(server_capabilities & CLIENT_SESSION_TRACKING) ||
+      !mariadb_connection(mysql))
+  {
+    diag("Server doesn't support session tracking or doesn't send SESSION_TRACK_STATE_CHANGE information");
+    mysql_close(mysql);
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "SET SESSION session_track_state_change = 1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_session_track_get_first(mysql, SESSION_TRACK_STATE_CHANGE, (const char **)&data, &length);
+
+  FAIL_IF(length != 1, "expected length=1");
+  FAIL_IF(data[0] != 0x31, "expected 1");
+
+  mysql_close(mysql);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_mdev14647", test_mdev14647, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_conc297", test_conc297, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_mdev9059_2", test_mdev9059_2, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_mdev9059_3", test_mdev9059_3, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

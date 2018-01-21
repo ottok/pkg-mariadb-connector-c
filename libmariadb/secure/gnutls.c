@@ -46,6 +46,8 @@ enum ma_pem_type {
 
 static int my_verify_callback(gnutls_session_t ssl);
 
+char tls_library_version[TLS_VERSION_LENGTH];
+
 struct st_gnutls_data {
   MYSQL *mysql;
   gnutls_privkey_t key;
@@ -969,6 +971,9 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
     ma_tls_get_error(errmsg, errmsg_len, rc);
     goto end;
   }
+  snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "GnuTLS %s",
+          gnutls_check_version(NULL));
+
   ma_tls_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_gnutls_config);
@@ -1001,17 +1006,46 @@ void ma_tls_end()
   return;
 }
 
-static int ma_gnutls_set_ciphers(gnutls_session_t ssl, char *cipher_str)
+static size_t ma_gnutls_get_protocol_version(const char *tls_version_option,
+                                             char *priority_string,
+                                             size_t prio_len)
+{
+  char tls_versions[128];
+
+  tls_versions[0]= 0;
+  if (!tls_version_option || !tls_version_option[0])
+    goto end;
+
+
+  if (strstr(tls_version_option, "TLSv1.0"))
+    strcat(tls_versions, ":+VERS-TLS1.0");
+  if (strstr(tls_version_option, "TLSv1.1"))
+    strcat(tls_versions, ":+VERS-TLS1.1");
+  if (strstr(tls_version_option, "TLSv1.2"))
+    strcat(tls_versions, ":+VERS-TLS1.2");
+end:
+  if (tls_versions[0])
+    snprintf(priority_string, prio_len - 1, "NORMAL:-VERS-TLS-ALL%s", tls_versions);
+  else
+    strncpy(priority_string, "NORMAL", prio_len - 1);
+  return strlen(priority_string);
+}
+
+static int ma_gnutls_set_ciphers(gnutls_session_t ssl,
+                                 const char *cipher_str,
+                                 const char *tls_version)
 {
   const char *err;
   char *token;
-#define PRIO_SIZE 1024  
+#define PRIO_SIZE 1024
   char prio[PRIO_SIZE];
 
-  if (!cipher_str)
-    return gnutls_priority_set_direct(ssl, "NORMAL", &err);
+  ma_gnutls_get_protocol_version(tls_version, prio, PRIO_SIZE);
 
-  token= strtok(cipher_str, ":");
+  if (!cipher_str)
+    return gnutls_priority_set_direct(ssl, prio, &err);
+
+  token= strtok((char *)cipher_str, ":");
 
   strcpy(prio, "NONE:+VERS-TLS-ALL:+SIGN-ALL:+COMP-NULL");
 
@@ -1175,7 +1209,7 @@ void *ma_tls_init(MYSQL *mysql)
   /*
   gnutls_certificate_set_retrieve_function2(GNUTLS_xcred, client_cert_callback);
  */
-  ssl_error= ma_gnutls_set_ciphers(ssl, mysql->options.ssl_cipher);
+  ssl_error= ma_gnutls_set_ciphers(ssl, mysql->options.ssl_cipher, mysql->options.extension ? mysql->options.extension->tls_version : NULL);
   if (ssl_error < 0)
     goto error;
 
@@ -1195,6 +1229,7 @@ error:
   return NULL;
 }
 
+#ifdef GNUTLS_EXTERNAL_TRANSPORT
 ssize_t ma_tls_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
@@ -1214,6 +1249,7 @@ static int ma_tls_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
   return pvio->methods->wait_io_or_timeout(pvio, 0, ms);
 }
+#endif
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
@@ -1235,12 +1271,16 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (!(blocking= pvio->methods->is_blocking(pvio)))
     pvio->methods->blocking(pvio, TRUE, 0);
 
+#ifdef GNUTLS_EXTERNAL_TRANSPORT
   /* we don't use GnuTLS read/write functions */
   gnutls_transport_set_ptr(ssl, pvio);
   gnutls_transport_set_push_function(ssl, ma_tls_push);
   gnutls_transport_set_pull_function(ssl, ma_tls_pull);
   gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
   gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
+#else
+  gnutls_transport_set_int(ssl, mysql_get_socket(mysql));
+#endif
 
   do {
     ret = gnutls_handshake(ssl);
@@ -1347,6 +1387,9 @@ static int my_verify_callback(gnutls_session_t ssl)
 
   if (status & GNUTLS_CERT_INVALID)
   {
+    char errbuf[100];
+    snprintf(errbuf, 99, "CA Verification failed (Status: %d)", status);
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, errbuf);
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
   /* Up to here the process is the same for X.509 certificates and
@@ -1419,19 +1462,17 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
   else
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                        ER(CR_SSL_CONNECTION_ERROR), 
+                        ER(CR_SSL_CONNECTION_ERROR),
                         "Finger print buffer too small");
     return 0;
   }
 }
 
-my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
+int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
 {
   if (!ctls || !ctls->ssl)
     return 1;
 
-  version->iversion= gnutls_protocol_get_version(ctls->ssl);
-  version->cversion= (char *)gnutls_protocol_get_name(version->iversion);
-  return 0;  
+  return gnutls_protocol_get_version(ctls->ssl) - 1;
 }
 #endif /* HAVE_GNUTLS */

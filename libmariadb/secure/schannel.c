@@ -22,9 +22,8 @@
 #pragma comment (lib, "crypt32.lib")
 #pragma comment (lib, "secur32.lib")
 
-//#define VOID void
-
 extern my_bool ma_tls_initialized;
+char tls_library_version[TLS_VERSION_LENGTH];
 
 #define PROT_SSL3 1
 #define PROT_TLS1_0 2
@@ -176,7 +175,31 @@ void ma_schannel_set_win_error(MYSQL *mysql);
 */
 int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
+  DWORD size;
+  DWORD handle;
 
+  if ((size= GetFileVersionInfoSize("schannel.dll", &handle)))
+  {
+    LPBYTE VersionInfo;
+    if ((VersionInfo = (LPBYTE)malloc(size)))
+    {
+      unsigned int len;
+      VS_FIXEDFILEINFO *fileinfo;
+
+      GetFileVersionInfo("schannel.dll", 0, size, VersionInfo);
+      VerQueryValue(VersionInfo, "\\", (LPVOID *)&fileinfo, &len);
+      snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "Schannel %d.%d.%d.%d\n",
+        HIWORD(fileinfo->dwFileVersionMS),
+        LOWORD(fileinfo->dwFileVersionMS),
+        HIWORD(fileinfo->dwFileVersionLS),
+        LOWORD(fileinfo->dwFileVersionLS));
+      free(VersionInfo);
+      goto end;
+    }
+  }
+  /* this shouldn't happen anyway */
+  strcpy(tls_library_version, "Schannel 0.0.0.0");
+end:
   ma_tls_initialized = TRUE;
   return 0;
 }
@@ -235,10 +258,7 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SC_CTX *sctx= NULL;
   if ((sctx= (SC_CTX *)LocalAlloc(0, sizeof(SC_CTX))))
-  {
     ZeroMemory(sctx, sizeof(SC_CTX));
-    sctx->mysql= mysql;
-  }
   return sctx;
 }
 /* }}} */
@@ -352,11 +372,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   }
   if (mysql->options.extension && mysql->options.extension->tls_version)
   {
-    if (strstr("TLSv1.0", mysql->options.extension->tls_version))
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0_CLIENT;
-    if (strstr("TLSv1.1", mysql->options.extension->tls_version))
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1_CLIENT;
-    if (strstr("TLSv1.2", mysql->options.extension->tls_version))
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
   }
   if (!Cred.grbitEnabledProtocols)
@@ -373,7 +393,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
   
-  if (!ma_schannel_verify_certs(sctx))
+  if (!ma_schannel_verify_certs(ctls))
     goto end;
   
   return 0;
@@ -391,7 +411,7 @@ end:
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
-  MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
+  MARIADB_PVIO *pvio= ctls->pvio;
   DWORD dlength= 0;
   SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
   if (status == SEC_I_CONTEXT_EXPIRED)
@@ -405,7 +425,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
-  MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
+  MARIADB_PVIO *pvio= ctls->pvio;
   ssize_t rc, wlength= 0;
   ssize_t remain= length;
 
@@ -448,7 +468,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   PCCERT_CONTEXT pServerCert= NULL;
 
   /* check server name */
-  if (pszServerName && (sctx->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
+  if (pszServerName && (ctls->pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
   {
     DWORD NameSize= 0;
     char *p1;
@@ -465,13 +485,13 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
                                       CERT_NAME_SEARCH_ALL_NAMES_FLAG,
                                       NULL, NULL, 0)))
     {
-      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
+      pvio->set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
       goto end;
     }
 
     if (!(szName= (char *)LocalAlloc(0, NameSize + 1)))
     {
-      pvio->set_error(sctx->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
+      pvio->set_error(ctls->pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
       goto end;
     }
 
@@ -481,22 +501,22 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
                            NULL, szName, NameSize))
 
     {
-      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
+      pvio->set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
       goto end;
     }
 
     /* szName may contain multiple names: Each name is zero terminated, the last name is
        double zero terminated */
 
-    
+
     p1 = szName;
     while (p1 && *p1 != 0)
     {
-      DWORD len = strlen(p1);
+      size_t len = strlen(p1);
       /* check if given name contains wildcard */
       if (len && *p1 == '*')
       {
-        DWORD hostlen = strlen(pszServerName);
+        size_t hostlen = strlen(pszServerName);
         if (hostlen < len)
           break;
         if (!stricmp(pszServerName + hostlen - len + 1, p1 + 1))
