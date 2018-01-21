@@ -1,10 +1,14 @@
-mariadb-connector-c (3.0.3-1) UNRELEASED; urgency=medium
+mariadb-connector-c (3.0.3-1) unstable; urgency=low
 
-  * Update git links after project migrated to Salsa
-  * Update watch file to check for all new releases, not just from 2.x series
   * New upstream version 3.0.3
+  * Update watch file to check for all new releases, not just from 2.x series
+  * Upgrade packaging from libmariadb2 to libmariadb3
+  * Update d/copyright for MariaDB Connector C version 3
+  * Update git links after project migrated to Salsa
+  * Always build with MySQL client libs compatibility links
+  * Build with --list-missing
 
- -- Otto Kekäläinen <otto@debian.org>  Tue, 09 Jan 2018 10:03:10 +0000
+ -- Otto Kekäläinen <otto@debian.org>  Sun, 21 Jan 2018 18:52:13 +0200
 
 mariadb-connector-c (2.3.3-1) unstable; urgency=low
 
