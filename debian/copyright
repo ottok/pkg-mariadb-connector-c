@@ -54,9 +54,6 @@ License: BSD-2-clause
     the documentation and/or other materials provided with the
     distribution.
 
-License: public-domain
- The work is public domain (no license).
-
 Files: *
 Copyright:
  2000-2012 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
@@ -66,7 +63,7 @@ Copyright:
  2014 Kristian Nielsen & MariaDB Corporation
 License: LGPL-2+
 
-Files: libmariadb/ma_dyncol.*
+Files: libmariadb/mariadb_dyncol.*
 Copyright:
  2011-2012 Oleksandr Byelkin
  2011-2013 Monty Program Ab
@@ -99,15 +96,10 @@ Copyright:
  2007, 2012, Oracle and/or its affiliates.
 License: LGPL
 
-Files: include/getopt.*
+Files: unittest/libmariadb/getopt.*
 Copyright:
  1989-1994, Free Software Foundation, Inc
 License: LGPL-2+
-
-Files: ./libmariadb/dbug.c
-Copyright:
- 1987, Fred Fish
-License: public-domain
 
 Files: cmake/FindIconv.cmake
 Copyright:
@@ -117,7 +109,7 @@ License: BSD-2-Clause
 Files: debian/*
 Copyright:
  2014 Daniel Schepler <schepler@debian.org>
- 2014-2016 Otto Kekäläinen <otto@debian.org>
+ 2014-2018 Otto Kekäläinen <otto@debian.org>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -134,7 +126,3 @@ License: GPL-2+
  .
  On Debian systems, the complete text of the GNU General
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
-
-Files: debian/patches/*
-Copyright: 2014-2015 Daniel Schepler <schepler@debian.org>
-License: LGPL-2+
