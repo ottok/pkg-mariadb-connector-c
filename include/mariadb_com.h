@@ -169,13 +169,22 @@ enum enum_server_command
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
 #define MARIADB_CLIENT_COM_MULTI (1ULL << 33)
 #define MARIADB_CLIENT_STMT_BULK_OPERATIONS (1ULL << 34)
+/* support bundle first command with the authentication packet */
+#define MARIADB_CLIENT_COM_IN_AUTH (1ULL << 35)
+
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
-        !(mysql->server_capabilities & CLIENT_MYSQL)
+((mysql) && !(mysql->server_capabilities & CLIENT_MYSQL))
+
+#define HAS_MARIADB_SERVER_EXTENDED_CAPABILITY(mysql, capability)\
+(IS_MARIADB_EXTENDED_SERVER(mysql) && \
+ (mysql)->extension->mariadb_server_capabilities & (capability >> 32))
+
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
                                        MARIADB_CLIENT_COM_MULTI |\
-                                       MARIADB_CLIENT_STMT_BULK_OPERATIONS)
+                                       MARIADB_CLIENT_STMT_BULK_OPERATIONS |\
+                                       MARIADB_CLIENT_COM_IN_AUTH)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\
@@ -223,12 +232,15 @@ enum enum_server_command
 #define SERVER_QUERY_NO_INDEX_USED          32
 #define SERVER_STATUS_CURSOR_EXISTS         64
 #define SERVER_STATUS_LAST_ROW_SENT        128
-#define SERVER_STATUS_DB_DROPPED           256 
+#define SERVER_STATUS_DB_DROPPED           256
 #define SERVER_STATUS_NO_BACKSLASH_ESCAPES 512
 #define SERVER_STATUS_METADATA_CHANGED    1024
 #define SERVER_QUERY_WAS_SLOW             2048
 #define SERVER_PS_OUT_PARAMS              4096
+#define SERVER_STATUS_IN_TRANS_READONLY   8192
+
 #define SERVER_SESSION_STATE_CHANGED      (1UL << 14)
+#define SERVER_STATUS_ANSI_QUOTES         (1UL << 15)
 
 #define MYSQL_ERRMSG_SIZE	512
 #define NET_READ_TIMEOUT	30		/* Timeout on read */

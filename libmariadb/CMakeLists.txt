@@ -1,5 +1,4 @@
 INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
-                    ${ZLIB_INC}
                     ${CC_SOURCE_DIR}/libmariadb)
 
 ADD_DEFINITIONS(-D ENABLED_LOCAL_INFILE)
@@ -295,9 +294,8 @@ ELSE()
   ADD_DEFINITIONS(-DLIBICONV_PLUG)
 ENDIF()
 
-IF(ZLIB_FOUND)
+IF(ZLIB_FOUND AND WITH_EXTERNAL_ZLIB)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
-  LINK_LIBRARIES(${ZLIB_LIBRARY})
 ELSE()
   SET(ZLIB_SOURCES
     ../zlib/adler32.c 
@@ -316,7 +314,7 @@ ELSE()
     ../zlib/uncompr.c
     ../zlib/zutil.c
   )
-SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
   INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/zlib)
 ENDIF()
 
@@ -331,25 +329,18 @@ SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
 IF(NOT WIN32)
-  CREATE_EXPORT_FILE(mariadbclient
-                   ${CMAKE_CURRENT_BINARY_DIR}
+  CREATE_EXPORT_FILE(WRITE mariadbclient.def
                    "libmysqlclient_18"
                    "${MYSQL_LIB_SYMBOLS}"
-                   0
+                   "libmariadbclient_18")
+  CREATE_EXPORT_FILE(APPEND mariadbclient.def
+                   "libmariadb_3"
+                   "${MARIADB_LIB_SYMBOLS}"
                    "")
-  CREATE_EXPORT_FILE(mariadbclient
-                   ${CMAKE_CURRENT_BINARY_DIR}
-                   "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS}"
-                   1
-                   " libmysqlclient_18")
 ELSE()
-  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MYSQL_LIB_SYMBOLS})
-  CREATE_EXPORT_FILE(mariadbclient
-                   ${CMAKE_CURRENT_BINARY_DIR}
+  CREATE_EXPORT_FILE(WRITE mariadbclient.def
                    "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS}"
-                   0
+                   "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS}"
                    "")
 ENDIF()
 
@@ -401,16 +392,24 @@ IF(CMAKE_SIZEOF_VOID_P EQUAL 8 AND MSVC)
 ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  IF (NOT WITH_ASAN)
+  IF (NOT WITH_ASAN AND NOT WITH_TSAN)
     TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
   ENDIF()
-  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
+  TARGET_LINK_LIBRARIES (libmariadb "${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
 
 SET_TARGET_PROPERTIES(mariadbclient PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
 
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES PREFIX "")
+
+SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
+ ${CPACK_PACKAGE_VERSION_MAJOR}
+ SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
+
+IF(NOT WIN32)
+  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES OUTPUT_NAME "${LIBMARIADB_STATIC_NAME}")
+ENDIF()
 
 #
 # Installation
@@ -428,10 +427,6 @@ IF(WITH_MYSQLCOMPAT)
   create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
 ENDIF()
 
-
-SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
- ${CPACK_PACKAGE_VERSION_MAJOR}
- SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
 
 INSTALL(TARGETS mariadbclient
           COMPONENT Development

@@ -3968,8 +3968,7 @@ mariadb_dyncol_val_long(longlong *ll, DYNAMIC_COLUMN_VALUE *val)
           {
             sign= -1;
             src++;
-          } else if (*src == '-')
-            src++;
+          }
           while(len && isdigit(*src))
           {
             i= i * 10 + (*src - '0');
@@ -4043,13 +4042,15 @@ mariadb_dyncol_val_double(double *dbl, DYNAMIC_COLUMN_VALUE *val)
     case DYN_COL_STRING:
       {
         char *str, *end;
-        if ((str= malloc(val->x.string.value.length + 1)))
+        if (!(str= malloc(val->x.string.value.length + 1)))
           return ER_DYNCOL_RESOURCE;
         memcpy(str, val->x.string.value.str, val->x.string.value.length);
         str[val->x.string.value.length]= '\0';
         *dbl= strtod(str, &end);
         if (*end != '\0')
           rc= ER_DYNCOL_TRUNCATED;
+        free(str);
+        break;
       }
 #ifndef LIBMARIADB
     case DYN_COL_DECIMAL:

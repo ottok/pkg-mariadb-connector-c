@@ -242,8 +242,16 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
             }
             else
             {
-              if (!stmt->fields[i].max_length)
+              if (stmt->fields[i].flags & ZEROFILL_FLAG)
+              {
+                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len);
+                if (len > stmt->fields[i].max_length)
+                  stmt->fields[i].max_length= len;
+              }
+              else if (!stmt->fields[i].max_length)
+              {
                 stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+              }
               cp+= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
             }
           }
@@ -347,10 +355,6 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
   uint i;
   size_t truncations= 0;
   unsigned char *null_ptr, bit_offset= 4;
-
-  if (!stmt->bind_result_done)  /* nothing to do */
-    return(0);
-
   row++; /* skip status byte */
   null_ptr= row;
   row+= (stmt->field_count + 9) / 8;
@@ -360,12 +364,15 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
     /* save row position for fetching values in pieces */
     if (*null_ptr & bit_offset)
     {
+      if (!stmt->bind[i].is_null)
+        stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
       *stmt->bind[i].is_null= 1;
       stmt->bind[i].u.row_ptr= NULL;
     } else
     {
       stmt->bind[i].u.row_ptr= row;
-      if (stmt->bind[i].flags & MADB_BIND_DUMMY)
+      if (!stmt->bind_result_done ||
+          stmt->bind[i].flags & MADB_BIND_DUMMY)
       {
         unsigned long length;
 
@@ -374,6 +381,9 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
         else
           length= net_field_length(&row);
         row+= length;
+        if (!stmt->bind[i].length)
+          stmt->bind[i].length= &stmt->bind[i].length_value;
+        *stmt->bind[i].length= stmt->bind[i].length_value= length;
       }
       else
       {
@@ -795,7 +805,21 @@ mem_error:
 }
 /* }}} */
 
-/* {{{ mysqlnd_stmt_execute_generate_bulk_request */
+/* {{{ mysql_stmt_skip_paramset */
+my_bool mysql_stmt_skip_paramset(MYSQL_STMT *stmt, uint row)
+{
+  uint i;
+  for (i=0; i < stmt->param_count; i++)
+  {
+    if (ma_get_indicator(stmt, i, row) == STMT_INDICATOR_IGNORE_ROW)
+      return '\1';
+  }
+  
+  return '\0';
+}
+/* }}} */
+
+/* {{{ mysql_stmt_execute_generate_bulk_request */
 unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
@@ -818,6 +842,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
                             STMT_INDICATOR_NULL 1
                             STMT_INDICATOR_DEFAULT 2
                             STMT_INDICATOR_IGNORE 3
+                            STMT_INDICATOR_SKIP_SET 4
                    n      data from bind buffer
 
      */
@@ -892,6 +917,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
     /* calculate data size */
     for (j=0; j < stmt->array_size; j++)
     {
+      if (mysql_stmt_skip_paramset(stmt, j))
+        continue;
+
       for (i=0; i < stmt->param_count; i++)
       {
         size_t size= 0;
@@ -1367,15 +1395,12 @@ int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt)
     return(rc);
   }
 
-  if ((rc= stmt->mysql->methods->db_stmt_fetch_to_bind(stmt, row)))
-  {
-    return(rc);
-  }
+  rc= stmt->mysql->methods->db_stmt_fetch_to_bind(stmt, row);
 
   stmt->state= MYSQL_STMT_USER_FETCHING;
   CLEAR_CLIENT_ERROR(stmt->mysql);
   CLEAR_CLIENT_STMT_ERROR(stmt);
-  return(0);
+  return(rc);
 }
 
 int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned int column, unsigned long offset)
@@ -1622,6 +1647,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto fail;
     }
+    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
   }
   stmt->state = MYSQL_STMT_PREPARED;
   return(0);
@@ -1815,6 +1841,7 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
         SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         return(1);
       }
+      memset(stmt->bind, 0, sizeof(MYSQL_BIND) * mysql->field_count);
       stmt->field_count= mysql->field_count;
 
       for (i=0; i < stmt->field_count; i++)
@@ -2289,7 +2316,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
 
     /* avoid sending close + prepare in 2 packets */
 
-    if ((rc= mysql_stmt_prepare(stmt, stmt_str, length)))
+    if ((rc= mysql_stmt_prepare(stmt, stmt_str, (unsigned long)length)))
       return rc;
     return mysql_stmt_execute(stmt);
   }
@@ -2380,6 +2407,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto fail;
     }
+    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
   }
   stmt->state = MYSQL_STMT_PREPARED;
 
