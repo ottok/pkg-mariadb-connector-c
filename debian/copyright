@@ -1,58 +1,7 @@
-Upstream-Name: mariadb_client
+Upstream-Name: mariadb-connector-c
 Source: <https://downloads.mariadb.org/>
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Contact: https://mariadb.atlassian.net/browse/MDEV
-
-License: LGPL-2+
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
- .
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
- .
- You should have received a copy of the GNU Library General Public
- License along with this library; if not see <http://www.gnu.org/licenses>
- or write to the Free Software Foundation, Inc.,
- 51 Franklin St., Fifth Floor, Boston, MA 02110, USA
- .
- On Debian systems, the complete text of the GNU Library General Public
- License version 2 can be found in "/usr/share/common-licenses/LGPL-2".
-
-License: LGPL
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; version 2
- of the License.
- .
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
- .
- You should have received a copy of the GNU Library General Public
- License along with this library; if not, write to the Free
- Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- MA 02110-1301, USA
- .
- On Debian and systems the full text of the GNU Library General Public
- License version 2 can be found in the file
- `/usr/share/common-licenses/LGPL-2`
-
-License: BSD-2-clause
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are
- met:
- .
- 1. Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer.
- .
- 2. Redistributions in binary form must the following disclaimer in
-    the documentation and/or other materials provided with the
-    distribution.
+Upstream-Contact: https://jira.mariadb.org/browse/MDEV
 
 Files: *
 Copyright:
@@ -126,3 +75,54 @@ License: GPL-2+
  .
  On Debian systems, the complete text of the GNU General
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+ .
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not see <http://www.gnu.org/licenses>
+ or write to the Free Software Foundation, Inc.,
+ 51 Franklin St., Fifth Floor, Boston, MA 02110, USA
+ .
+ On Debian systems, the complete text of the GNU Library General Public
+ License version 2 can be found in "/usr/share/common-licenses/LGPL-2".
+
+License: LGPL
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Library General Public
+ License as published by the Free Software Foundation; version 2
+ of the License.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+ .
+ You should have received a copy of the GNU Library General Public
+ License along with this library; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ MA 02110-1301, USA
+ .
+ On Debian and systems the full text of the GNU Library General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/LGPL-2`
+
+License: BSD-2-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+ .
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ .
+ 2. Redistributions in binary form must the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
