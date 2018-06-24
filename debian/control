@@ -1,5 +1,5 @@
 Source: mariadb-connector-c
-Priority: extra
+Priority: optional
 Maintainer: Debian MySQL Maintainers <pkg-mysql-maint@lists.alioth.debian.org>
 Uploaders: Daniel Schepler <schepler@debian.org>,
            Otto Kekäläinen <otto@debian.org>
