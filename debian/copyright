@@ -1,6 +1,6 @@
 Upstream-Name: mariadb-connector-c
 Source: <https://downloads.mariadb.org/>
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Contact: https://jira.mariadb.org/browse/MDEV
 
 Files: *
@@ -71,7 +71,7 @@ License: GPL-2+
  GNU General Public License for more details.
  .
  You should have received a copy of the GNU General Public License
- along with this program. If not, see <http://www.gnu.org/licenses/>
+ along with this program. If not, see <https://www.gnu.org/licenses/>
  .
  On Debian systems, the complete text of the GNU General
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
@@ -88,7 +88,7 @@ License: LGPL-2+
  Library General Public License for more details.
  .
  You should have received a copy of the GNU Library General Public
- License along with this library; if not see <http://www.gnu.org/licenses>
+ License along with this library; if not see <https://www.gnu.org/licenses>
  or write to the Free Software Foundation, Inc.,
  51 Franklin St., Fifth Floor, Boston, MA 02110, USA
  .

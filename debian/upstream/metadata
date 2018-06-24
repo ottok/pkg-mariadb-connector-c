@@ -1,6 +1,6 @@
 Name: MariaDB
-Bug-Database: http://mariadb.org/jira
-Bug-Submit: http://mariadb.org/jira
+Bug-Database: https://mariadb.org/jira
+Bug-Submit: https://mariadb.org/jira
 Contact: maria-developers@lists.launchpad.net
 Donation: https://mariadb.org/donate/
 Repository: git://github.com/MariaDB/mariadb-connector-c.git
